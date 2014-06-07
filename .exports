@@ -1,6 +1,14 @@
 # Make vim the default editor
 export EDITOR="vim"
 
+# Use vim as the default pager
+export PAGER=~/.vim/vimpager
+
+# I normally would put this in the alias file, but I didn't want to lose track that I'm using 
+# vimpager here
+alias less=$PAGER
+alias zless=$PAGER
+
 # Larger bash history (allow 32³ entries; default is 500)
 export HISTSIZE=32768
 export HISTFILESIZE=$HISTSIZE
