@@ -4,3 +4,5 @@ colorscheme railscat
 set guifont=Menlo:h14
 " Better line-height
 set linespace=8
+" Hide the mouse when typing text
+set mousehide
