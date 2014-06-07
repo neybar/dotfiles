@@ -61,4 +61,8 @@ prompt_command () {
     unset JOBS;
 }
 export PROMPT_COMMAND=prompt_command
-export PS1='[\u@\h \W]\$ '
+# allow a system level PS1 to go unmolested if it is more important
+if [[ ! -z $HIDE_PS1 ]]; then
+    export PS1='[\u@\h \W]\$ ';
+    unset HIDE_PS1;
+fi
