@@ -106,6 +106,10 @@ map <leader>sp [s
 map <leader>sa zg
 map <leader>s? z=
 
+"Set some vars to allow localvimrc plugin to work
+let localvimrc_sandbox = 0
+let localvimrc_persistent = 1
+
 if &t_Co > 2 || has("gui_running")
 
   " InsertTabWrapper
@@ -195,19 +199,6 @@ endfu
 command! PrettyXML call DoPrettyXML()
 
 nmap <leader>t :TlistToggle<cr>
-
-"Restart apache and Tasks on write
-:function! <SID>restart_apache()
-" not the most robust check, but should keep from firing on any non-alpha box
-" might need to add in some additional checks for CAS since it doesn't have
-" apache or taskd, but would match the alpha check.
-if hostname() =~ 'alpha' 
-    silent !sudo /var/www/bin/taskd_init.sh reload &>/dev/null
-    silent !sudo /usr/sbin/apachectl -k restart 2>/dev/null
-endif 
-:endfunction
-au BufWritePost *.pm call s:restart_apache()
-au BufWritePost /var/www/cgi/* call s:restart_apache()
        
 " Remove the Windows ^M - when the encodings gets messed up
 noremap <Leader>m mmHmt:%s/<C-V><cr>//ge<cr>'tzt'm
