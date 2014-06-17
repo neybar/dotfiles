@@ -43,6 +43,7 @@ install nmap
 install node # This installs `npm` too using the recommended installation method
 install optipng
 install p7zip
+install perl-build
 install pigz
 install plenv
 install rename
