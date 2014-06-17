@@ -37,17 +37,18 @@ install ack
 install bfg
 install git
 install imagemagick --with-webp
+install jpegoptim
 install lynx
 install nmap
 install node # This installs `npm` too using the recommended installation method
+install optipng
 install p7zip
 install pigz
+install plenv
 install rename
 install sqlmap
 install tree
 install webkit2png
-install optipng
-install jpegoptim
 install youtube-dl
 
 # Remove outdated versions from the cellar
