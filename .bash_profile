@@ -43,10 +43,10 @@ if [ -f /etc/bash_completion ]; then
 fi
 
 # enable plenv if available
-if which plenv > /dev/null; then eval "$(plenv init -)"; fi
+if which plenv &> /dev/null; then eval "$(plenv init -)"; fi
 
 # Add tab completion for many Bash commands
-if which brew > /dev/null && [ -f "$(brew --prefix)/etc/bash_completion" ]; then
+if which brew &> /dev/null && [ -f "$(brew --prefix)/etc/bash_completion" ]; then
 	source "$(brew --prefix)/etc/bash_completion"
 fi
 
