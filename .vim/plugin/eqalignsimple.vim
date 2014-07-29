@@ -37,12 +37,12 @@ let s:QUOTELIKE
 let s:LINE_WITH_EQ
 \    = '^\(\%('.s:QUOTELIKE.'\|[^''"]\)\{-}\)\s*'
 \    . '\(\%([~.*/%+-]\|||\?\|&&\?\|//\?\)\?=\@<!=[=~]\@!\)'
-\    . '\(.*\)$'
+\    . '\s*\(.*\)$'
 
 let s:LINE_WITH_EQ_VIM
 \    = '^\(\%(\s*"\)\?\%('.s:QUOTELIKE.'\|[^''"]\)\{-}\)\s*'
 \    . '\(\%([~.*/%+-]\|||\?\|&&\?\|//\?\)\?=\@<!=[=~]\@!\)'
-\    . '\(.*\)$'
+\    . '\s*\(.*\)$'
 
 function EQAS_Align (mode, ...) range
     let option = a:0 ? a:1 : {}
@@ -50,7 +50,7 @@ function EQAS_Align (mode, ...) range
     "What symbol to align (defaults to '=' variants)...
     let search_pat = expand('%') =~ '\.vim$' ? s:LINE_WITH_EQ_VIM : s:LINE_WITH_EQ
     if strlen(get(option,'pattern',""))
-        let search_pat = '^\(.\{-}\)\s*\(' . get(option,'pattern') . '\)\(.*\)$'
+        let search_pat = '^\(.\{-}\)\s*\(' . get(option,'pattern') . '\)\s*\(.*\)$'
 
     elseif get(option,'cursor')
         " If requested, work out what symbol is under cursor and align to that...
