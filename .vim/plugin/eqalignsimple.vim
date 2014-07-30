@@ -36,7 +36,7 @@ let s:QUOTELIKE
 
 let s:LINE_WITH_EQ
 \    = '^\(\%('.s:QUOTELIKE.'\|[^''"]\)\{-}\)\s*'
-\    . '\(\%([~.*/%+-]\|||\?\|&&\?\|//\?\)\?=\@<!=[=~]\@!\)'
+\    . '\(<==\|==\?>\|\%([~.*/%+-]\|||\?\|&&\?\|//\?\)\?=\@<!=[=~]\@!\)'
 \    . '\s*\(.*\)$'
 
 let s:LINE_WITH_EQ_VIM
@@ -117,7 +117,7 @@ function EQAS_Align (mode, ...) range
     for line in lines
         let newline = empty(line.op)
         \ ? line.text
-        \ : printf("%-*s%*s%s", max_lval, line.lval, max_op, line.op, line.rval)
+        \ : printf("%-*s%*s %s", max_lval, line.lval, max_op, line.op, line.rval)
 
         call setline(linenum, newline)
         let linenum += 1
@@ -125,12 +125,12 @@ function EQAS_Align (mode, ...) range
 endfunction
 
 
-nmap <silent> -     :call EQAS_Align('nmap')<CR>
-nmap <silent> --    :call EQAS_Align('nmap', {'paragraph':1} )<CR>
-nmap <silent> _     :call EQAS_Align('nmap', {'cursor':1} )<CR>
-nmap <silent> __    :call EQAS_Align('nmap', {'cursor':1, 'paragraph':1} )<CR>
-vmap <silent> -     :call EQAS_Align('vmap')<CR>
-vmap <silent> _     :call EQAS_Align('vmap', {'cursor':1} )<CR>
+nmap <silent> =     :call EQAS_Align('nmap')<CR>
+nmap <silent> ==    :call EQAS_Align('nmap', {'paragraph':1} )<CR>
+nmap <silent> +     :call EQAS_Align('nmap', {'cursor':1} )<CR>
+nmap <silent> ++    :call EQAS_Align('nmap', {'cursor':1, 'paragraph':1} )<CR>
+vmap <silent> =     :call EQAS_Align('vmap')<CR>
+vmap <silent> +     :call EQAS_Align('vmap', {'cursor':1} )<CR>
 
 " Restore previous external compatibility options
 let &cpo = s:save_cpo
