@@ -125,12 +125,12 @@ function EQAS_Align (mode, ...) range
 endfunction
 
 
-nmap <silent> =     :call EQAS_Align('nmap')<CR>
-nmap <silent> ==    :call EQAS_Align('nmap', {'paragraph':1} )<CR>
-nmap <silent> +     :call EQAS_Align('nmap', {'cursor':1} )<CR>
-nmap <silent> ++    :call EQAS_Align('nmap', {'cursor':1, 'paragraph':1} )<CR>
-vmap <silent> =     :call EQAS_Align('vmap')<CR>
-vmap <silent> +     :call EQAS_Align('vmap', {'cursor':1} )<CR>
+nmap <silent> -     :call EQAS_Align('nmap')<CR>
+nmap <silent> --    :call EQAS_Align('nmap', {'paragraph':1} )<CR>
+nmap <silent> _     :call EQAS_Align('nmap', {'cursor':1} )<CR>
+nmap <silent> __    :call EQAS_Align('nmap', {'cursor':1, 'paragraph':1} )<CR>
+vmap <silent> -     :call EQAS_Align('vmap')<CR>
+vmap <silent> _     :call EQAS_Align('vmap', {'cursor':1} )<CR>
 
 " Restore previous external compatibility options
 let &cpo = s:save_cpo
