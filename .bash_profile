@@ -40,6 +40,8 @@ done
 # enable programmable completion features for debian style systems
 if [ -f /etc/bash_completion ]; then
   . /etc/bash_completion
+elif [ -f $(brew --prefix)/etc/bash_completion ]; then
+    . $(brew --prefix)/etc/bash_completion
 fi
 
 # enable plenv if available
