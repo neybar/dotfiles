@@ -43,8 +43,9 @@ export RESET
 # If this is an xterm set the title to user@host:dir
 case $TERM in
     xterm*)
-        #PROMPT_COMMAND='echo -ne "\033]0;${USER}@${HOSTNAME}: ${PWD}\007"'
-        XTERM_TITLE="\033k\033\\"
+        if [[ ! $PROMPT_COMMAND =~ '033' ]]; then
+            PROMPT_COMMAND='echo -ne "\033]0;${USER}@${HOSTNAME}: ${PWD}\007"; $PROMP_COMMAND'
+        fi
         ;;
     *)
         ;;
@@ -53,14 +54,21 @@ esac
 # export PS1='`jobs | sed "s/  */ /g" | cut -d" " -f1,3- | sed "s/\\[\([0-9]*\)\\]/\\[\e[1;33m\1\e[0;37m\\]/" `\n[\u@\h \W]\$ '
 # this prompt_command will print out a colorized background job listing
 prompt_command () {
-    echo -en "$XTERM_TITLE";
     JOBS=$(jobs | sed "s/  */ /g" | cut -d" " -f1,3- | sed "s/\\[\([0-9]*\)\\]/\\[\\\033[1;33m\1\\\033[0m\\]/");
     if [[ ! -z "${JOBS}" ]]; then
         echo -e "$JOBS";
     fi
     unset JOBS;
 }
-export PROMPT_COMMAND=prompt_command
+#export PROMPT_COMMAND=prompt_command
+case $PROMPT_COMMAND in
+    prompt_command*)
+        #pass
+        ;;
+    *)
+        PROMPT_COMMAND="prompt_command; $PROMPT_COMMAND"
+        ;;
+esac
 # allow a system level PS1 to go unmolested if it is more important
 if [[ ! $HIDE_PS1 ]]; then
     export PS1='[\u@\h \W]\$ ';
