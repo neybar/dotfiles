@@ -48,6 +48,7 @@ install pigz
 install plenv
 install rename
 install sqlmap
+install ssh-copy-id
 install tree
 install webkit2png
 install youtube-dl
