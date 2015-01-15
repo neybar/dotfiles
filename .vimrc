@@ -73,6 +73,7 @@ set tabstop=4
 set smarttab "might need to remove this
 set foldlevelstart=1
 
+
 set ai "Auto indent
 set si "Smart indent
 "disable clearing to the begining of the line when entering #
@@ -129,34 +130,49 @@ if &t_Co > 2 || has("gui_running")
   inoremap <s-tab> <c-r>=InsertTabWrappe ("backward")<cr>
 endif
 
+" Enable file type detection.
+" Use the default filetype settings, so that mail gets 'tw' set to 72,
+" 'cindent' is on in C files, etc.
+" Also load indent files, to automatically do language-dependent indenting.
+filetype plugin indent on
+
 " Only do this part when compiled with support for autocommands.
 if has("autocmd")
 
-  " Enable file type detection.
-  " Use the default filetype settings, so that mail gets 'tw' set to 72,
-  " 'cindent' is on in C files, etc.
-  " Also load indent files, to automatically do language-dependent indenting.
-  filetype plugin indent on
+  augroup vimrc_autocmd
+    autocmd!
+    " For all text files set 'textwidth' to 78 characters.
+    autocmd FileType text setlocal textwidth=78
 
-  " For all text files set 'textwidth' to 78 characters.
-  autocmd FileType text setlocal textwidth=78
+    " When editing a file, always jump to the last known cursor position.
+    " Don't do it when the position is invalid or when inside an event handler
+    " (happens when dropping a file on gvim).
+    autocmd BufReadPost *
+      \ if line("'\"") > 0 && line("'\"") <= line("$") |
+      \   exe "normal g`\"" |
+      \ endif
 
-  " When editing a file, always jump to the last known cursor position.
-  " Don't do it when the position is invalid or when inside an event handler
-  " (happens when dropping a file on gvim).
-  autocmd BufReadPost *
-    \ if line("'\"") > 0 && line("'\"") <= line("$") |
-    \   exe "normal g`\"" |
-    \ endif
+    " Don't screw up folds when inserting text that might affect them, until
+    " leaving insert mode. Foldmethod is local to the window. Protect against
+    " screwing up folding when switching between windows.
+    " NOTE: this is disabled because re-enabling the syntax folding was
+    " causing significant delays
+    " autocmd InsertEnter * if !exists('w:last_fdm') | let w:last_fdm=&foldmethod | setlocal foldmethod=manual | endif
+    " autocmd InsertLeave,WinLeave * if exists('w:last_fdm') | let &l:foldmethod=w:last_fdm | unlet w:last_fdm | endif
+  augroup END
+  
+  if exists("+omnifunc")
+      augroup vimrc_autocmd_omnifunc
+        autocmd!
+        autocmd Filetype *
+                    \	if &omnifunc == "" |
+                    \		setlocal omnifunc=syntaxcomplete#Complete |
+                    \	endif
+      augroup END
+  endif
 
 endif " has("autocmd")
 
-if has("autocmd") && exists("+omnifunc")
-	autocmd Filetype *
-				\	if &omnifunc == "" |
-				\		setlocal omnifunc=syntaxcomplete#Complete |
-				\	endif
-endif
 
 fu! DoPrettyXML()
     " save the filetype so we can restore it later
