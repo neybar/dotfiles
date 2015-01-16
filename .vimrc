@@ -43,6 +43,7 @@ set t_vb=
 
 map  <F12> :nohlsearch<CR>
 nmap <F5> :make <cr>
+map <leader>ma :make<cr>
 set pastetoggle=<F11>
 set autowrite
 set wildmode=list:longest
@@ -111,24 +112,24 @@ map <leader>s? z=
 let localvimrc_sandbox = 0
 let localvimrc_persistent = 1
 
-if &t_Co > 2 || has("gui_running")
-
-  " InsertTabWrapper
-  " " http://vim.sourceforge.net/tips/tip.php?tip_id=102
-  function! InsertTabWrapper(direction)
-     let col = col('.') - 1
-     if !col || getline('.')[col - 1] !~ '\k'
-        return "\<tab>"
-     elseif "backward" == a:direction
-        return "\<c-p>"
-     else
-        return "\<c-n>"
-     endif
-  endfunction
-
-  inoremap <tab> <c-r>=InsertTabWrapper ("forward")<cr>
-  inoremap <s-tab> <c-r>=InsertTabWrappe ("backward")<cr>
-endif
+"if &t_Co > 2 || has("gui_running")
+"
+"  " InsertTabWrapper
+"  " " http://vim.sourceforge.net/tips/tip.php?tip_id=102
+"  function! InsertTabWrapper(direction)
+"     let col = col('.') - 1
+"     if !col || getline('.')[col - 1] !~ '\k'
+"        return "\<tab>"
+"     elseif "backward" == a:direction
+"        return "\<c-p>"
+"     else
+"        return "\<c-n>"
+"     endif
+"  endfunction
+"
+"  inoremap <tab> <c-r>=InsertTabWrapper ("forward")<cr>
+"  inoremap <s-tab> <c-r>=InsertTabWrapper ("backward")<cr>
+"endif
 
 " Enable file type detection.
 " Use the default filetype settings, so that mail gets 'tw' set to 72,
@@ -151,6 +152,10 @@ if has("autocmd")
       \ if line("'\"") > 0 && line("'\"") <= line("$") |
       \   exe "normal g`\"" |
       \ endif
+
+    " Automatically open the quickfix window when running :make
+    autocmd QuickFixCmdPost [^l]* nested cwindow
+    autocmd QuickFixCmdPost    l* nexted lwindow
 
     " Don't screw up folds when inserting text that might affect them, until
     " leaving insert mode. Foldmethod is local to the window. Protect against
