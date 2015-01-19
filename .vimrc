@@ -1,6 +1,6 @@
 " General Settings 
 set nocompatible
-set history=300		" keep 50 lines of command line history
+set history=300		" keep 300 lines of command line history
 " With a map leader it's possible to do extra key combinations
 " like <leader>w saves the current file
 let mapleader = ","
@@ -41,10 +41,20 @@ set noerrorbells
 set novisualbell
 set t_vb=
 
+" Setup some short cuts
+" I prefer the F? keys, but on some systems (osx) they get hijacked
+" so I've been training myself to use some other shortcuts.  I'll
+" probably remove the F? keys some day... maybe.
+map <leader>hl :nohlsearch<CR>
 map  <F12> :nohlsearch<CR>
+
 nmap <F5> :make <cr>
 map <leader>ma :make<cr>
+
 set pastetoggle=<F11>
+" emulate pastetoggle with a normal mode mapping
+nmap <leader>pp :setlocal paste! paste?<CR>
+
 set autowrite
 set wildmode=list:longest
 set shiftround
@@ -59,7 +69,7 @@ set scrolloff=3    "Start scrolling three lines before bottom of window
 syntax enable
 colors desert
 set background=dark
-set ffs=unix,dos,mac "Default file types
+set fileformats=unix,dos,mac "Default file types (in particular what line endings to use)
           
 if has("gui_running")
     set guioptions-=T
@@ -82,11 +92,14 @@ set si "Smart indent
 set wrap "Wrap lines
 
 "Allow searching in visual block
-:vnoremap <M-/> <Esc>/\%V
+"select block then hit <leader>/ to search.  Using <leader>/ again will search
+"in the same block
+map <leader>/ /\%V
+vmap <leader>/ <Esc>/\%V
 
-map <leader>t2 :setlocal shiftwidth=2<cr>
-map <leader>t4 :setlocal shiftwidth=4<cr>
-map <leader>t8 :setlocal shiftwidth=8<cr>
+map <leader>t2 :setlocal shiftwidth = 2<cr>
+map <leader>t4 :setlocal shiftwidth = 4<cr>
+map <leader>t8 :setlocal shiftwidth = 8<cr>
 
 "Save a file as root (,W)
 noremap <leader>W :w !sudo tee % > /dev/null<CR>
