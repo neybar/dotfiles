@@ -219,6 +219,7 @@ endfu
 
 command! PrettyXML call DoPrettyXML()
 
+" Set a mapping for the taglist.vim plugin.  Toggles the taglist window.
 nmap <leader>t :TlistToggle<cr>
        
 " Remove the Windows ^M - when the encodings gets messed up
