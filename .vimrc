@@ -154,8 +154,9 @@ if has("autocmd")
       \ endif
 
     " Automatically open the quickfix window when running :make
+    " http://vim.wikia.com/wiki/Automatically_open_the_quickfix_window_on_:make
     autocmd QuickFixCmdPost [^l]* nested cwindow
-    autocmd QuickFixCmdPost    l* nexted lwindow
+    autocmd QuickFixCmdPost    l* nested lwindow
 
     " Don't screw up folds when inserting text that might affect them, until
     " leaving insert mode. Foldmethod is local to the window. Protect against
