@@ -219,6 +219,9 @@ endfu
 
 command! PrettyXML call DoPrettyXML()
 
+" Set some defaults for taglist
+let Tlist_Close_On_Select = 1
+let Tlist_GainFocus_On_ToggleOpen = 1
 " Set a mapping for the taglist.vim plugin.  Toggles the taglist window.
 nmap <leader>t :TlistToggle<cr>
        
