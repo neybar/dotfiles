@@ -112,29 +112,7 @@ map <leader>s? z=
 let localvimrc_sandbox = 0
 let localvimrc_persistent = 1
 
-"if &t_Co > 2 || has("gui_running")
-"
-"  " InsertTabWrapper
-"  " " http://vim.sourceforge.net/tips/tip.php?tip_id=102
-"  function! InsertTabWrapper(direction)
-"     let col = col('.') - 1
-"     if !col || getline('.')[col - 1] !~ '\k'
-"        return "\<tab>"
-"     elseif "backward" == a:direction
-"        return "\<c-p>"
-"     else
-"        return "\<c-n>"
-"     endif
-"  endfunction
-"
-"  inoremap <tab> <c-r>=InsertTabWrapper ("forward")<cr>
-"  inoremap <s-tab> <c-r>=InsertTabWrapper ("backward")<cr>
-"endif
-
 " Enable file type detection.
-" Use the default filetype settings, so that mail gets 'tw' set to 72,
-" 'cindent' is on in C files, etc.
-" Also load indent files, to automatically do language-dependent indenting.
 filetype plugin indent on
 
 " Only do this part when compiled with support for autocommands.
