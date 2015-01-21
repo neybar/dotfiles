@@ -115,7 +115,7 @@ map <leader>p :cp<cr>
 "Pressing ,ss will toggle and untoggle spell checking
 map <leader>ss :setlocal spell!<cr>
 
-"Shortcuts using <leader>
+"Spelling Shortcuts using <leader>
 map <leader>sn ]s
 map <leader>sp [s
 map <leader>sa zg
@@ -133,8 +133,6 @@ if has("autocmd")
 
   augroup vimrc_autocmd
     autocmd!
-    " For all text files set 'textwidth' to 78 characters.
-    autocmd FileType text setlocal textwidth=78
 
     " When editing a file, always jump to the last known cursor position.
     " Don't do it when the position is invalid or when inside an event handler
