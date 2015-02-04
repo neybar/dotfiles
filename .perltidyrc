@@ -1,0 +1,16 @@
+--maximum-line-length=0
+--indent-columns=4
+--continuation-indentation=4
+--output-line-ending=unix
+--paren-tightness=2
+--block-brace-tightness=0
+--noadd-semicolons
+--nooutdent-long-comments
+--nooutdent-long-quotes
+--ignore-side-comment-lengths
+--maximum-fields-per-table=4
+--comma-arrow-breakpoints=3
+--nospace-for-semicolon
+--cuddled-else
+--opening-brace-always-on-right
+--stack-all-containers
