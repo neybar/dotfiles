@@ -57,3 +57,23 @@ fi
 
 # Add tab completion for SSH hostnames based on ~/.ssh/config, ignoring wildcards
 [ -e "$HOME/.ssh/config" ] && complete -o "default" -o "nospace" -W "$(grep "^Host" ~/.ssh/config | grep -v "[?*]" | cut -d " " -f2 | tr ' ' '\n')" scp sftp ssh
+
+
+# Setup ssh agent so it works across tmux sessions
+if [ -z "$TMUX" ]; then
+    # we're not in a tmux session
+
+    if [ ! -z "$SSH_TTY" ]; then
+        # We logged in via SSH
+
+        # Check and see if we have a socket, and that it isn't already
+        # a link.  If it isn't a link then make it one.
+        if [ -S "$SSH_AUTH_SOCK" ] && [ ! -h "$SSH_AUTH_SOCK" ]; then
+            ln -sf "$SSH_AUTH_SOCK" ~/.ssh/ssh_auth_sock
+        fi
+        export SSH_AUTH_SOCK=~/.ssh/ssh_auth_sock
+
+        # start tmux (boo, only works this way with tmux 2.0)
+        tmux new-session -A -s main
+    fi
+fi
