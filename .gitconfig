@@ -2,6 +2,8 @@
 	# View abbreviated SHA, description, and history graph of the latest 20 commits
 	l = log --pretty=oneline -n 20 --graph --abbrev-commit
     lol = log --graph --oneline --decorate --all
+    # Checkout shortcut
+    co = checkout
 	# View the current working tree status using the short format
 	s = status -s
 	# Show the diff between the latest commit and the current state
@@ -89,4 +91,4 @@
 	insteadOf = "gist:"
 
 [push]
-	default = matching
+	default = tracking
