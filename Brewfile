@@ -53,6 +53,7 @@ install tree
 install webkit2png
 install youtube-dl
 install dark-mode #toggle OSX menu bar dark/light mode with dark-mode command
+install tmux
 
 # Remove outdated versions from the cellar
 cleanup
