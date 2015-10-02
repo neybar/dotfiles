@@ -1,10 +1,16 @@
 #! /usr/bin/env perl
-
-=head1 NAME
-
-%FFILE% - %HERE%
-
-=cut
-
+#
+# Short description for %FFILE%
+#
+# Author %USER% <%MAIL%>
+# Version 0.1
+# Copyright (C) %YEAR% %USER% <%MAIL%>
+# Modified On %FDATE%
+# Created  %FDATE%
+#
 use strict;
 use warnings;
+
+
+
+%HERE%

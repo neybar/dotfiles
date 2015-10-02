@@ -683,7 +683,7 @@ function! s:Git(bang, args) abort
   let args = matchstr(a:args,'\v\C.{-}%($|\\@<!%(\\\\)*\|)@=')
   if exists(':terminal')
     let dir = s:repo().tree()
-    tabnew
+    tabedit %
     execute 'lcd' fnameescape(dir)
     execute 'terminal' git args
   else
@@ -1253,7 +1253,7 @@ function! s:Grep(cmd,bang,arg) abort
   try
     execute cd.'`=s:repo().tree()`'
     let &grepprg = s:repo().git_command('--no-pager', 'grep', '-n', '--no-color')
-    let &grepformat = '%f:%l:%m'
+    let &grepformat = '%f:%l:%m,%f'
     exe a:cmd.'! '.escape(matchstr(a:arg,'\v\C.{-}%($|[''" ]\@=\|)@='),'|')
     let list = a:cmd =~# '^l' ? getloclist(0) : getqflist()
     for entry in list
@@ -2070,15 +2070,17 @@ function! s:BlameJump(suffix) abort
   if winnr > 0
     exe bufnr.'bdelete'
   endif
-  execute 'Gblame '.args
-  execute lnum
-  let delta = line('.') - line('w0') - offset
-  if delta > 0
-    execute 'normal! '.delta."\<C-E>"
-  elseif delta < 0
-    execute 'normal! '.(-delta)."\<C-Y>"
+  if exists(':Gblame')
+    execute 'Gblame '.args
+    execute lnum
+    let delta = line('.') - line('w0') - offset
+    if delta > 0
+      execute 'normal! '.delta."\<C-E>"
+    elseif delta < 0
+      execute 'normal! '.(-delta)."\<C-Y>"
+    endif
+    syncbind
   endif
-  syncbind
   return ''
 endfunction
 
@@ -2317,7 +2319,7 @@ function! s:github_url(opts, ...) abort
     if get(a:opts, 'line2') && a:opts.line1 == a:opts.line2
       let url .= '#L' . a:opts.line1
     elseif get(a:opts, 'line2')
-      let url .= '#L' . a:opts.line1 . '-' . a:opts.line2
+      let url .= '#L' . a:opts.line1 . '-L' . a:opts.line2
     endif
   elseif a:opts.type == 'tag'
     let commit = matchstr(getline(3),'^tag \zs.*')
