@@ -31,7 +31,7 @@ brew 'vim', args: ['override-system-vi']
 
 # Install other useful binaries
 brew 'ack'
-brew 'bfg'
+brew 'caskroot/cask/java'
 brew 'cvs'
 brew 'exiftool'
 brew 'dark-mode' #toggle OSX menu bar dark/light mode with dark-mode command
