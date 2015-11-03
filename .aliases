@@ -39,6 +39,9 @@ alias gurl='curl --compressed'
 # Get week number
 alias week='date +%V'
 
+# Grep with color
+alias grep="grep --color=auto"
+
 # Stopwatch
 alias timer='echo "Timer started. Stop with Ctrl-D." && date && time cat && date'
 
