@@ -64,6 +64,7 @@ tap  'caskroom/cask'
 tap  'caskroom/versions'
 
 cask 'adium'
+cask 'bettertouchtools'
 cask 'dropbox'
 cask 'firefox'
 cask 'google-chrome'
