@@ -79,6 +79,7 @@ cask 'quicksilver'
 cask 'spotify'
 cask 'steam'
 #cask 'synergy'
+cask 'tagger' # MP3 ID3 Tag editor
 cask 'torbrowser'
 cask 'transmission'
 cask 'tunnelblick'
