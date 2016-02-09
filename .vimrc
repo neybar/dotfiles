@@ -97,6 +97,10 @@ set wrap "Wrap lines
 map <leader>/ /\%V
 vmap <leader>/ <Esc>/\%V
 
+"Allow vim-expand-region to use v and C-v to expand
+vmap v <Plug>(expand_region_expand)
+vmap <C-v> <Plug>(expand_region_shrink)
+
 map <leader>t2 :setlocal shiftwidth = 2<cr>
 map <leader>t4 :setlocal shiftwidth = 4<cr>
 map <leader>t8 :setlocal shiftwidth = 8<cr>
