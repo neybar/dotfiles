@@ -1,0 +1,29 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure(2) do |config|
+  #config.ssh.username = "jalance"
+  config.vm.post_up_message = "This message is coming from vagrant.d"
+
+  config.vm.provision "shell", privileged: false, name: "User Personalization Efforts", inline: <<-SHELL
+    # Install a few favorite packages
+    if [ -n "$(command -v yum)" ]; then
+        sudo yum install -y vim-enhanced tmux ack ctags ctags-etags
+    elif [ -n "$(command -v apt-get)" ]; then
+        sudo apt-get install -y vim ack-grep tmux exuberant-ctags
+    fi
+
+    # Install dot files
+    cd ~
+    if [ ! -d src ]; then
+        mkdir -p src
+    fi
+    cd src
+    if [ ! -d dotfiles ]; then
+        git clone https://github.com/neybar/dotfiles.git
+    fi
+    cd dotfiles
+    ./bootstrap.sh --force
+
+  SHELL
+end
