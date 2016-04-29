@@ -53,3 +53,6 @@ alias vi='vim'
 
 # Make vim the default editor for mysql
 alias mysql="EDITOR=\"vim -c ':set ft=sql'\" mysql"
+
+# thef@#! project, but no swears...
+eval "$(thefuck --alias bah)"

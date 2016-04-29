@@ -37,6 +37,7 @@ brew 'cvs'
 brew 'exiftool'
 brew 'dark-mode' #toggle OSX menu bar dark/light mode with dark-mode command
 brew 'ffmpeg'
+brew 'thefuck'
 brew 'git'
 brew 'imagemagick', args: ['with-webp']
 brew 'jhead'
