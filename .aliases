@@ -8,6 +8,7 @@ alias -- -="cd -"
 # Look in .exports for less and zless aliases
 
 # Detect which `ls` flavor is in use
+unalias ls # allow for re-running .alias file gracefully
 if ls --color > /dev/null 2>&1; then # GNU `ls`
     ls_command="ls"
     dir_color_cmd="dircolors"
@@ -55,4 +56,6 @@ alias vi='vim'
 alias mysql="EDITOR=\"vim -c ':set ft=sql'\" mysql"
 
 # thef@#! project, but no swears...
-eval "$(thefuck --alias bah)"
+if ! type "thefuck" > /dev/null; then
+    eval "$(thefuck --alias bah)"
+fi
