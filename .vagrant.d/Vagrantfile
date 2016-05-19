@@ -8,9 +8,9 @@ Vagrant.configure(2) do |config|
   config.vm.provision "shell", privileged: false, name: "User Personalization Efforts", inline: <<-SHELL
     # Install a few favorite packages
     if [ -n "$(command -v yum)" ]; then
-        sudo yum install -y vim-enhanced tmux ack ctags ctags-etags
+        sudo yum install -y vim-enhanced tmux ack ctags ctags-etags git
     elif [ -n "$(command -v apt-get)" ]; then
-        sudo apt-get install -y vim ack-grep tmux exuberant-ctags
+        sudo apt-get install -y vim ack-grep tmux exuberant-ctags git
     fi
 
     # Install dot files
