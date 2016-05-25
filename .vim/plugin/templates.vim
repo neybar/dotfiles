@@ -208,10 +208,16 @@ function <SID>TDirectorySearch(path, template_prefix, file_name)
 	" Use find if possible as it will also get hidden files on nix systems. Use
 	" builtin glob as a fallback
 	if executable("find") && !has("win32") && !has("win64")
-		let l:find_cmd = '`find -L ''' . a:path . ''' -maxdepth 1 -type f -name ''' . a:template_prefix . '*''`'
+		let l:find_cmd = '`find -L ' . shellescape(a:path) . ' -maxdepth 1 -type f -name ' . shellescape(a:template_prefix . '*' ) . '`'
 		call <SID>Debug("Executing " . l:find_cmd)
 		let l:glob_results = glob(l:find_cmd)
-	else
+		if v:shell_error != 0
+			call <SID>Debug("Could not execute find command")
+			unlet l:glob_results
+		endif
+	endif
+	if !exists("l:glob_results")
+		call <SID>Debug("Using fallback glob")
 		let l:glob_results = glob(a:path . a:template_prefix . "*")
 	endif
 	let l:templates = split(l:glob_results, "\n")
@@ -418,7 +424,7 @@ function <SID>TLoad()
 	let l:file_dir = <SID>DirName(l:file_name)
 	let l:depth = g:templates_search_height
 	let l:tFile = <SID>TFind(l:file_dir, l:file_name, l:depth)
-	call <SID>TLoadTemplate(l:tFile)
+	call <SID>TLoadTemplate(l:tFile, 0)
 endfunction
 
 
@@ -427,7 +433,7 @@ endfunction
 " a template suffix (and the template is searched as usual). Of course this
 " makes variable expansion and cursor positioning.
 "
-function <SID>TLoadCmd(template)
+function <SID>TLoadCmd(template, position)
 	if filereadable(a:template)
 		let l:tFile = a:template
 	else
@@ -438,11 +444,11 @@ function <SID>TLoadCmd(template)
 
 		let l:tFile = <SID>TFind(l:file_dir, a:template, l:height)
 	endif
-	call <SID>TLoadTemplate(l:tFile)
+	call <SID>TLoadTemplate(l:tFile, a:position)
 endfunction
 
 " Load the given file as a template
-function <SID>TLoadTemplate(template)
+function <SID>TLoadTemplate(template, position)
 	if a:template != ""
 		let l:deleteLastLine = 0
 		if line('$') == 1 && getline(1) == ''
@@ -451,7 +457,11 @@ function <SID>TLoadTemplate(template)
 
 		" Read template file and expand variables in it.
 		let l:safeFileName = <SID>NeuterFileName(a:template)
-		execute "keepalt 0r " . l:safeFileName
+		if a:position == 0
+			execute "keepalt 0r " . l:safeFileName
+		else
+			execute "keepalt r " . l:safeFileName
+		endif
 		call <SID>TExpandVars()
 
 		if l:deleteLastLine == 1
@@ -479,7 +489,8 @@ fun ListTemplateSuffixes(A,P,L)
 
   return l:res
 endfun
-command -nargs=1 -complete=customlist,ListTemplateSuffixes Template call <SID>TLoadCmd("<args>")
+command -nargs=1 -complete=customlist,ListTemplateSuffixes Template call <SID>TLoadCmd("<args>", 0)
+command -nargs=1 -complete=customlist,ListTemplateSuffixes TemplateHere call <SID>TLoadCmd("<args>", 1)
 
 " Syntax autocommands {{{1
 "

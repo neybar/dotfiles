@@ -3,15 +3,15 @@ if exists('g:loaded_ack')
 endif
 
 if !exists("g:ack_default_options")
-  let g:ack_default_options = " -s -H --nocolor --nogroup --column"
+  let g:ack_default_options = " -s -H --nopager --nocolor --nogroup --column"
 endif
 
 " Location of the ack utility
 if !exists("g:ackprg")
-  if executable('ack')
-    let g:ackprg = "ack"
-  elseif executable('ack-grep')
+  if executable('ack-grep')
     let g:ackprg = "ack-grep"
+  elseif executable('ack')
+    let g:ackprg = "ack"
   else
     finish
   endif
