@@ -31,6 +31,7 @@ brew 'vim', args: ['override-system-vi']
 
 # Install other useful binaries
 brew 'ack'
+brew 'ansible'
 brew 'caskroot/cask/java'
 brew 'ctags'
 brew 'cvs'
