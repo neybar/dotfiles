@@ -56,6 +56,4 @@ alias vi='vim'
 alias mysql="EDITOR=\"vim -c ':set ft=sql'\" mysql"
 
 # thef@#! project, but no swears...
-if ! type "thefuck" > /dev/null; then
-    eval "$(thefuck --alias bah)"
-fi
+hash "thefuck" 2>/dev/null && { eval "$(thefuck --alias bah)"; }
