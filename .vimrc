@@ -1,6 +1,7 @@
-" General Settings 
+" General Settings
 set nocompatible
 set history=300		" keep 300 lines of command line history
+
 " With a map leader it's possible to do extra key combinations
 " like <leader>w saves the current file
 let mapleader = ","
@@ -59,9 +60,9 @@ set t_vb=
 
 " I'm using Conway's hlnext plugin for searching.  If that plugin is removed then change the nohlsearch back
 " map <leader>hl :nohlsearch<CR>
-map <leader>hl [Cancel highlighting] :call HLNextOff() <BAR> :nohlsearch <BAR> :call VG_Show_CursorColumn('off')<CR>
+nmap <leader>hl :call HLNextOff() <BAR> :nohlsearch<CR>
 " map <F12> :nohlsearch<CR>
-map <F12> [Cancel highlighting] :call HLNextOff() <BAR> :nohlsearch <BAR> :call VG_Show_CursorColumn('off')<CR>
+nmap <F12> :call HLNextOff() <BAR> :nohlsearch<CR>
 
 nmap <F5> :make <cr>
 map <leader>ma :make<cr>
@@ -85,7 +86,7 @@ syntax enable
 colors desert
 set background=dark
 set fileformats=unix,dos,mac "Default file types (in particular what line endings to use)
-          
+
 if has("gui_running")
     set guioptions-=T
     set t_Co=256
@@ -103,7 +104,7 @@ set foldlevelstart=1
 set ai "Auto indent
 set si "Smart indent
 "disable clearing to the begining of the line when entering #
-"inoremap # X# 
+"inoremap # X#
 set wrap "Wrap lines
 
 "Allow searching in visual block
@@ -148,7 +149,8 @@ let localvimrc_persistent = 1
 filetype plugin indent on
 
 "Double-delete to remove trailing whitespace...
-Nmap <silent> <BS><BS>  [Remove trailing whitespace] mz:call TrimTrailingWS()<CR>`z
+map <silent> <BS><BS>  mz:call TrimTrailingWS()<CR>`z
+
 function! TrimTrailingWS ()
     if search('\s\+$', 'cnw')
         :%s/\s\+$//g
@@ -182,7 +184,7 @@ if has("autocmd")
     " autocmd InsertEnter * if !exists('w:last_fdm') | let w:last_fdm=&foldmethod | setlocal foldmethod=manual | endif
     " autocmd InsertLeave,WinLeave * if exists('w:last_fdm') | let &l:foldmethod=w:last_fdm | unlet w:last_fdm | endif
   augroup END
-  
+
   if exists("+omnifunc")
       augroup vimrc_autocmd_omnifunc
         autocmd!
@@ -241,8 +243,8 @@ let Tlist_Close_On_Select = 1
 let Tlist_GainFocus_On_ToggleOpen = 1
 " Set a mapping for the taglist.vim plugin.  Toggles the taglist window.
 nmap <leader>t :TlistToggle<cr>
-       
+
 " Remove the Windows ^M - when the encodings gets messed up
 noremap <Leader>m mmHmt:%s/<C-V><cr>//ge<cr>'tzt'm
 "
-"                                             
+"
