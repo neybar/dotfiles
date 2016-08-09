@@ -28,6 +28,7 @@ if exists("&undodir")
 endif
 set showcmd	    	" display incomplete commands
 set ignorecase      " ignore case when searching
+set infercase       " allow insert mode completion to be smart about matching
 set smartcase       " don't ignore case when looking for Caps
 set hlsearch        " highlight search terms
 set incsearch       " show partial search matches
@@ -70,7 +71,7 @@ set pastetoggle=<F11>
 nmap <leader>pp :setlocal paste! paste?<CR>
 
 set autowrite
-set wildmode=list:longest
+set wildmode=list:longest,full
 set shiftround
 set updatecount=10 "save file every 10 keystrokes?
 set modeline
