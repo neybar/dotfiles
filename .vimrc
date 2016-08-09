@@ -45,8 +45,12 @@ set t_vb=
 " I prefer the F? keys, but on some systems (osx) they get hijacked
 " so I've been training myself to use some other shortcuts.  I'll
 " probably remove the F? keys some day... maybe.
-map <leader>hl :nohlsearch<CR>
-map  <F12> :nohlsearch<CR>
+
+" I'm using Conway's hlnext plugin for searching.  If that plugin is removed then change the nohlsearch back
+" map <leader>hl :nohlsearch<CR>
+map <leader>hl [Cancel highlighting] :call HLNextOff() <BAR> :nohlsearch <BAR> :call VG_Show_CursorColumn('off')<CR>
+" map <F12> :nohlsearch<CR>
+map <F12> [Cancel highlighting] :call HLNextOff() <BAR> :nohlsearch <BAR> :call VG_Show_CursorColumn('off')<CR>
 
 nmap <F5> :make <cr>
 map <leader>ma :make<cr>
@@ -131,6 +135,14 @@ let localvimrc_persistent = 1
 
 " Enable file type detection.
 filetype plugin indent on
+
+"Double-delete to remove trailing whitespace...
+Nmap <silent> <BS><BS>  [Remove trailing whitespace] mz:call TrimTrailingWS()<CR>`z
+function! TrimTrailingWS ()
+    if search('\s\+$', 'cnw')
+        :%s/\s\+$//g
+    endif
+endfunction
 
 " Only do this part when compiled with support for autocommands.
 if has("autocmd")
