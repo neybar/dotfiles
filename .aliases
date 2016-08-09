@@ -57,3 +57,6 @@ alias mysql="EDITOR=\"vim -c ':set ft=sql'\" mysql"
 
 # thef@#! project, but no swears...
 hash "thefuck" 2>/dev/null && { eval "$(thefuck --alias bah)"; }
+
+# make brew update easier
+hash "brew" 2>/dev/null && { alias brewski='brew update && brew upgrade --all && brew cleanup; brew doctor'; }
