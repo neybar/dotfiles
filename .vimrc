@@ -247,6 +247,10 @@ let Tlist_Close_On_Select = 1
 let Tlist_GainFocus_On_ToggleOpen = 1
 " Set a mapping for the taglist.vim plugin.  Toggles the taglist window.
 nmap <leader>t :TlistToggle<cr>
+" There seems to be a bug in OSX where perl_fold doesn't show up in time.  
+" I normally have been keeping this in .vim/after/ftplugin/perl.vim
+let g:perl_fold = 1
+let perl_fold = 1
 
 " Remove the Windows ^M - when the encodings gets messed up
 noremap <Leader>m mmHmt:%s/<C-V><cr>//ge<cr>'tzt'm
