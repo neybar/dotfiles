@@ -58,6 +58,8 @@ fi
 # Add tab completion for SSH hostnames based on ~/.ssh/config, ignoring wildcards
 [ -e "$HOME/.ssh/config" ] && complete -o "default" -o "nospace" -W "$(grep "^Host" ~/.ssh/config | grep -v "[?*]" | cut -d " " -f2 | tr ' ' '\n')" scp sftp ssh
 
+# Add iTerm integrations if available
+test -e "${HOME}/.iterm2_shell_integration.bash" && source "${HOME}/.iterm2_shell_integration.bash"
 
 # Setup ssh agent so it works across tmux sessions
 if [ -z "$TMUX" ]; then
@@ -77,3 +79,4 @@ if [ -z "$TMUX" ]; then
         tmux new-session -A -s main
     fi
 fi
+
