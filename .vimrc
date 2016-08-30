@@ -127,8 +127,8 @@ noremap <leader>W :w !sudo tee % > /dev/null<CR>
 "Cope
 " Do :help cope if you are unsure what cope is. It's super useful!
 map <leader>bc :botright cope<cr>
-map <leader>n :cn<cr>
-map <leader>p :cp<cr>
+map <leader>cn :cn<cr>
+map <leader>cp :cp<cr>
 
 
 "Spell checking
@@ -252,6 +252,10 @@ nmap <leader>t :TlistToggle<cr>
 let g:perl_fold = 1
 let perl_fold = 1
 
+let g:AutoPairsFlyMode = 1
+let g:AutoPairsShortcutBackInsert = '<Leader>b'
+let g:AutoPairsShortcutJump= '<Leader>n'
+let g:AutoPairsShortcutFastWrap= '<Leader>e'
 " Remove the Windows ^M - when the encodings gets messed up
 noremap <Leader>m mmHmt:%s/<C-V><cr>//ge<cr>'tzt'm
 "
