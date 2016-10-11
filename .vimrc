@@ -175,14 +175,6 @@ if has("autocmd")
     " http://vim.wikia.com/wiki/Automatically_open_the_quickfix_window_on_:make
     autocmd QuickFixCmdPost [^l]* nested cwindow
     autocmd QuickFixCmdPost    l* nested lwindow
-
-    " Don't screw up folds when inserting text that might affect them, until
-    " leaving insert mode. Foldmethod is local to the window. Protect against
-    " screwing up folding when switching between windows.
-    " NOTE: this is disabled because re-enabling the syntax folding was
-    " causing significant delays
-    " autocmd InsertEnter * if !exists('w:last_fdm') | let w:last_fdm=&foldmethod | setlocal foldmethod=manual | endif
-    " autocmd InsertLeave,WinLeave * if exists('w:last_fdm') | let &l:foldmethod=w:last_fdm | unlet w:last_fdm | endif
   augroup END
 
   if exists("+omnifunc")
@@ -247,10 +239,6 @@ let Tlist_Close_On_Select = 1
 let Tlist_GainFocus_On_ToggleOpen = 1
 " Set a mapping for the taglist.vim plugin.  Toggles the taglist window.
 nmap <leader>t :TlistToggle<cr>
-" There seems to be a bug in OSX where perl_fold doesn't show up in time.  
-" I normally have been keeping this in .vim/after/ftplugin/perl.vim
-let g:perl_fold = 1
-let perl_fold = 1
 
 let g:AutoPairsFlyMode = 1
 let g:AutoPairsShortcutBackInsert = '<Leader>b'
