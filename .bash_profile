@@ -61,6 +61,11 @@ fi
 # Add iTerm integrations if available
 test -e "${HOME}/.iterm2_shell_integration.bash" && source "${HOME}/.iterm2_shell_integration.bash"
 
+# Add fzf integration
+[ -f ~/.fzf.bash  ] && source ~/.fzf.bash
+export FZF_DEFAULT_COMMAND='ag --hidden --ignore .git -g ""'
+export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
+
 # Setup ssh agent so it works across tmux sessions
 if [ -z "$TMUX" ]; then
     # we're not in a tmux session
