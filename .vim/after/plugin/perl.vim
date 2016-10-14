@@ -19,3 +19,6 @@ vnoremap <silent> <leader>d :!perl -MO=Deparse 2>/dev/null<cr>
 " Run the current program
 nmap <leader>r :!perl %<cr>
 
+" Tame ctrl-p ins-complete a bit.  This will prevent keyword completion from
+" scanning all included perl modules which can slow things down a bit
+set complete-=i
