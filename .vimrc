@@ -244,6 +244,17 @@ let g:AutoPairsFlyMode = 1
 let g:AutoPairsShortcutBackInsert = '<Leader>b'
 let g:AutoPairsShortcutJump= '<Leader>n'
 let g:AutoPairsShortcutFastWrap= '<Leader>e'
+
+if executable('ag')
+  " Use ag over grep
+  set grepprg=ag\ --vimgrep\ $*
+  set grepformat=%f:%l:%c:%m
+  let g:ackprg = 'ag --vimgrep'
+  " Use ag in CtrlP for listing files. Lightning fast and respects .gitignore
+  " Was having trouble getting this to give the right results
+  "let g:ctrlp_user_command = 'ag %s -l --nocolor -g ""'
+endif
+
 " Remove the Windows ^M - when the encodings gets messed up
 noremap <Leader>m mmHmt:%s/<C-V><cr>//ge<cr>'tzt'm
 "
