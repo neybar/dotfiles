@@ -252,7 +252,7 @@ if executable('ag')
   let g:ackprg = 'ag --vimgrep'
   " Use ag in CtrlP for listing files. Lightning fast and respects .gitignore
   " Was having trouble getting this to give the right results
-  "let g:ctrlp_user_command = 'ag %s -l --nocolor -g ""'
+  let g:ctrlp_user_command = 'ag %s -l --nocolor --hidden --ignore .git --ignore .DS_Store -g ""'
 endif
 
 " Remove the Windows ^M - when the encodings gets messed up
