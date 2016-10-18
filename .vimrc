@@ -81,6 +81,10 @@ set laststatus=2
 set virtualedit=block
 set scrolloff=3    "Start scrolling three lines before bottom of window
 
+" Search down into subfolders
+" Provides tab-completion for all file-related tasks
+set path+=**
+
 "colors and fonts
 syntax enable
 colors desert
