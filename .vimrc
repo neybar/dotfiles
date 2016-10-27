@@ -145,10 +145,6 @@ map <leader>sp [s
 map <leader>sa zg
 map <leader>s? z=
 
-"Set some vars to allow localvimrc plugin to work
-let localvimrc_sandbox = 0
-let localvimrc_persistent = 1
-
 " Enable file type detection.
 filetype plugin indent on
 
@@ -193,62 +189,6 @@ if has("autocmd")
 
 endif " has("autocmd")
 
-
-fu! DoPrettyXML()
-    " save the filetype so we can restore it later
-    let l:origft = &ft
-    set ft=
-
-    " delete the xml header if it exists.  This will
-    " permit us to surround the document with fake tags
-    " without creating invalid xml.
-    1,1s/<?xml .*?>//
-
-    " insert fake tags around the entire document.
-    " This will permit us to pretty-format excerpts of
-    " XML that may contain multiple top-level elements.
-    1
-    exe "norm! O<PrettyXML>"
-    exe "norm! Go</PrettyXML>"
-
-
-    silent %!xmllint --format -
-
-    " xmllint will insert an <?xml?> header.  it's easy enough to delete
-    " if you don't want it.
-
-    " delete the fake tags
-    2
-    exe "norm ddGdd"
-
-    " restore the 'normal' indentation, which is one extra level
-    " too deep due to the extra tags we wrapped around the document.
-    silent %<
-
-    " back to home
-    1
-
-    " restore the filetype
-    exe "set ft=" . l:origft
-endfu
-
-command! PrettyXML call DoPrettyXML()
-" Set some defaults for delimitMate
-let delimitMate_expand_cr = 2
-let delimitMate_expand_space = 1
-let delimitMate_expand_inside_quotes = 1
-let delimitMate_jump_expansion = 1
-" Set some defaults for taglist
-let Tlist_Close_On_Select = 1
-let Tlist_GainFocus_On_ToggleOpen = 1
-" Set a mapping for the taglist.vim plugin.  Toggles the taglist window.
-nmap <leader>t :TlistToggle<cr>
-
-let g:AutoPairsFlyMode = 1
-let g:AutoPairsShortcutBackInsert = '<Leader>b'
-let g:AutoPairsShortcutJump= '<Leader>n'
-let g:AutoPairsShortcutFastWrap= '<Leader>e'
-
 if executable('ag')
   " Use ag over grep
   set grepprg=ag\ --vimgrep\ $*
@@ -261,5 +201,7 @@ endif
 
 " Remove the Windows ^M - when the encodings gets messed up
 noremap <Leader>m mmHmt:%s/<C-V><cr>//ge<cr>'tzt'm
+
+runtime plugins.vim
 "
 "
