@@ -1,15 +1,15 @@
 call plug#begin()
 
 " EasyMotion: Provides easy short range navigation shortcuts
-" https://github.com/easymotion/vim-easymotion
-Plug 'easymotion/vim-easymotion'
+Plug 'https://github.com/easymotion/vim-easymotion'
 
 " CtrlP: Fuzzy file finder
-" https://github.com/kien/ctrlp.vim
-Plug 'kien/ctrlp.vim'
+Plug 'https://github.com/kien/ctrlp.vim'
 
 " Ack: Integration with ack/ag searching
-" https://github.com/mileszs/ack.vim
-Plug 'mileszs/ack.vim'
+Plug 'https://github.com/mileszs/ack.vim'
+
+" FastFold: Fixed a bug where vim tries to refold and causes severe slow down
+Plug 'https://github.com/Konfekt/FastFold'
 
 call plug#end()
