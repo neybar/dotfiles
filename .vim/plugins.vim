@@ -25,6 +25,7 @@ Plug 'tpope/vim-repeat'
 " Airline: lightweight powerline plugin
 Plug 'vim-airline/vim-airline'
 let g:airline_powerline_fonts = 1
+let g:airline_inactive_collapse = 1
 
 """""""""""""""""""""""""""""""""""""""""""
 " Navigation Plugins
