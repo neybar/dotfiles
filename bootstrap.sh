@@ -8,8 +8,7 @@ function doIt() {
         echo "sourcing bash"
         source ~/.bash_profile
     fi
-    #reload the vim doc files
-    vim -u NONE -T dumb -c "helptags ~/.vim/doc" -c q
+    vim +PlugInstall +qall
 }
 if [ "$1" == "--force" -o "$1" == "-f" ]; then
 	doIt
