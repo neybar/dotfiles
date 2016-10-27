@@ -1,5 +1,9 @@
 call plug#begin()
 
+"""""""""""""""""""""""""""""""""""""""""""
+" General Utility Plugins
+"""""""""""""""""""""""""""""""""""""""""""
+
 " Matchit: Include matchit for vim < 7
 if v:version >= 800
     packadd matchit
@@ -12,10 +16,15 @@ Plug 'https://github.com/embear/vim-localvimrc'
 let localvimrc_sandbox = 0
 let localvimrc_persistent = 1
 
-
 " VimPager: Using for convenient installer, but don't enable plugin
 Plug 'rkitover/vimpager', { 'on': 'Page' }
 
+" Repeat: Let "." repeat more things
+Plug 'tpope/vim-repeat'
+
+" Airline: lightweight powerline plugin
+Plug 'vim-airline/vim-airline'
+let g:airline_powerline_fonts = 1
 
 """""""""""""""""""""""""""""""""""""""""""
 " Navigation Plugins
@@ -40,6 +49,14 @@ Plug 'https://github.com/easymotion/vim-easymotion'
 
 " CtrlP: Fuzzy file finder
 Plug 'https://github.com/kien/ctrlp.vim'
+
+" NerdTree: File Browser
+Plug 'scrooloose/nerdtree', { 'on': 'NERDTreeToggle' }
+nnoremap <leader>N :NERDTreeToggle<CR>
+
+" Gundo: Undo tree visualizer
+Plug 'sjl/gundo.vim', { 'on': 'GundoToggle' }
+nnoremap <leader>u :GundoToggle<CR>
 
 
 """""""""""""""""""""""""""""""""""""""""""
