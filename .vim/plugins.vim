@@ -28,4 +28,7 @@ else
     Plug 'https://github.com/tmhedberg/matchit'
 endif
 
+" Supertab: autocompletion with Tab
+Plug 'https://github.com/ervandew/supertab'
+
 call plug#end()
