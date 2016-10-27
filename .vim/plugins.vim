@@ -8,4 +8,8 @@ Plug 'easymotion/vim-easymotion'
 " https://github.com/kien/ctrlp.vim
 Plug 'kien/ctrlp.vim'
 
+" Ack: Integration with ack/ag searching
+" https://github.com/mileszs/ack.vim
+Plug 'mileszs/ack.vim'
+
 call plug#end()
