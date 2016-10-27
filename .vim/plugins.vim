@@ -11,7 +11,7 @@ endif
 Plug 'https://github.com/embear/vim-localvimrc'
 
 " VimPager: Using for convenient installer, but don't enable plugin
-Plug 'rkitover/vimpager' { 'for': 'nothing' }
+Plug 'rkitover/vimpager', { 'on': 'Page' }
 
 """""""""""""""""""""""""""""""""""""""""""
 " Navigation Plugins
@@ -79,7 +79,7 @@ Plug 'vim-scripts/vcscommand.vim'
 Plug 'vim-perl/vim-perl', { 'for': 'perl', 'do': 'make clean carp dancer highlight-all-pragmas moose test-more try-tiny'  }
 "
 " IndentGuides: Highlight indent levels
-Plug 'https://github.com/nathanaelkane/vim-indent-guides' { 'for':  'python' }
+Plug 'https://github.com/nathanaelkane/vim-indent-guides', { 'for':  'python' }
 
 
 """""""""""""""""""""""""""""""""""""""""""
