@@ -40,4 +40,7 @@ Plug 'https://github.com/tpope/vim-fugitive'
 " ExpandRegion: allows easy expansion of visual selections
 Plug 'https://github.com/terryma/vim-expand-region'
 
+" GitGutter: Shows inline git symbols for changed/added/removed lines
+Plug 'https://github.com/airblade/vim-gitgutter'
+
 call plug#end()
