@@ -56,6 +56,13 @@ let g:AutoPairsShortcutBackInsert = '<Leader>b'
 let g:AutoPairsShortcutJump= '<Leader>n'
 let g:AutoPairsShortcutFastWrap= '<Leader>e'
 
+" DelimitMate: Auto closer pairs.  I'm trying auto-pairs at the moment
+" Plug 'Raimondi/delimitMate'
+" Set some defaults for delimitMate
+" let delimitMate_expand_cr = 2
+" let delimitMate_expand_space = 1
+" let delimitMate_expand_inside_quotes = 1
+" let delimitMate_jump_expansion = 1
 
 " CloseTag: Try to close matching <p> tags
 Plug 'https://github.com/alvan/vim-closetag'
