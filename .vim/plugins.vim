@@ -34,6 +34,9 @@ Plug 'https://github.com/ervandew/supertab'
 " Commentary: easily comment out code
 Plug 'https://github.com/tpope/vim-commentary'
 
+" Fugitive: Git wrapper
+Plug 'https://github.com/tpope/vim-fugitive'
+
 " ExpandRegion: allows easy expansion of visual selections
 Plug 'https://github.com/terryma/vim-expand-region'
 
