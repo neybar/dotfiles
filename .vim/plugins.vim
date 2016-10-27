@@ -52,6 +52,9 @@ Plug 'https://github.com/nathanaelkane/vim-indent-guides' { 'for':  'python' }
 " Templates: Provide boilerplate templates
 Plug 'https://github.com/aperezdc/vim-template'
 
+" Localvimrc: Provides project specific vimrc files
+Plug 'https://github.com/embear/vim-localvimrc'
+
 " Perl: yup
 Plug 'vim-perl/vim-perl', { 'for': 'perl', 'do': 'make clean carp dancer highlight-all-pragmas moose test-more try-tiny'  }
 
