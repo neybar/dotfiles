@@ -145,10 +145,6 @@ map <leader>sp [s
 map <leader>sa zg
 map <leader>s? z=
 
-"Set some vars to allow localvimrc plugin to work
-let localvimrc_sandbox = 0
-let localvimrc_persistent = 1
-
 " Enable file type detection.
 filetype plugin indent on
 
