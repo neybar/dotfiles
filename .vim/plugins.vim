@@ -15,7 +15,7 @@ Plug 'https://github.com/Konfekt/FastFold'
 " Ansible: Provide some coloring and syntax for ansible files
 Plug 'https://github.com/pearofducks/ansible-vim'
 
-" Auto-Pairs: Auto close pairs of things Eg: ""''{} etc
+" AutoPairs: Auto close pairs of things Eg: ""''{} etc
 Plug 'https://github.com/jiangmiao/auto-pairs'
 
 " CloseTag: Try to close matching <p> tags
@@ -60,5 +60,8 @@ Plug 'https://github.com/embear/vim-localvimrc'
 
 " Perl: yup
 Plug 'vim-perl/vim-perl', { 'for': 'perl', 'do': 'make clean carp dancer highlight-all-pragmas moose test-more try-tiny'  }
+
+" TagList: File navigation by sub routines
+Plug 'taglist.vim'
 
 call plug#end()
