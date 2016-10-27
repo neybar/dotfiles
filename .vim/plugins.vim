@@ -21,4 +21,11 @@ Plug 'https://github.com/jiangmiao/auto-pairs'
 " CloseTag: Try to close matching <p> tags
 Plug 'https://github.com/alvan/vim-closetag'
 
+" Matchit: Include matchit for vim < 7
+if v:version >= 800
+    packadd matchit
+else
+    Plug 'https://github.com/tmhedberg/matchit'
+endif
+
 call plug#end()
