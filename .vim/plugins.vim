@@ -37,7 +37,10 @@ Plug 'https://github.com/tpope/vim-commentary'
 " Fugitive: Git wrapper
 Plug 'https://github.com/tpope/vim-fugitive'
 
-" Surround: easily manage surround areas with '"({})"' etc
+" VCSCommand: VCS (cvs,svn,git,hg) managment
+Plug 'vim-scripts/vcscommand.vim'
+
+" Surround: easily manage surround areas with '")({})"' etc
 Plug 'https://github.com/tpope/vim-surround'
 
 " ExpandRegion: allows easy expansion of visual selections
