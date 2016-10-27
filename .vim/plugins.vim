@@ -52,4 +52,7 @@ Plug 'https://github.com/nathanaelkane/vim-indent-guides' { 'for':  'python' }
 " Templates: Provide boilerplate templates
 Plug 'https://github.com/aperezdc/vim-template'
 
+" Perl: yup
+Plug 'vim-perl/vim-perl', { 'for': 'perl', 'do': 'make clean carp dancer highlight-all-pragmas moose test-more try-tiny'  }
+
 call plug#end()
