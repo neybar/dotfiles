@@ -15,4 +15,7 @@ Plug 'https://github.com/Konfekt/FastFold'
 " Ansible: Provide some coloring and syntax for ansible files
 Plug 'https://github.com/pearofducks/ansible-vim'
 
+" Auto-Pairs: Auto close pairs of things Eg: ""''{} etc
+Plug 'https://github.com/jiangmiao/auto-pairs'
+
 call plug#end()
