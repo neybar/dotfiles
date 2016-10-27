@@ -87,7 +87,9 @@ Plug 'https://github.com/nathanaelkane/vim-indent-guides' { 'for':  'python' }
 Plug 'elzr/vim-json'
 
 " Ansible: Provide some coloring and syntax for ansible files
-Plug 'https://github.com/pearofducks/ansible-vim'
+Plug 'pearofducks/ansible-vim'
 
+" SCSS: for sassy css
+Plug 'cakebaker/scss-syntax.vim'
 
 call plug#end()
