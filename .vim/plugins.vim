@@ -31,4 +31,7 @@ endif
 " Supertab: autocompletion with Tab
 Plug 'https://github.com/ervandew/supertab'
 
+" Commentary: easily comment out code
+Plug 'https://github.com/tpope/vim-commentary'
+
 call plug#end()
