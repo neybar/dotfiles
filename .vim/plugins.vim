@@ -10,6 +10,9 @@ endif
 " Localvimrc: Provides project specific vimrc files
 Plug 'https://github.com/embear/vim-localvimrc'
 
+" VimPager: Using for convenient installer, but don't enable plugin
+Plug 'rkitover/vimpager' { 'for': 'nothing' }
+
 """""""""""""""""""""""""""""""""""""""""""
 " Navigation Plugins
 """""""""""""""""""""""""""""""""""""""""""
