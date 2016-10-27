@@ -13,15 +13,16 @@ Plug 'https://github.com/embear/vim-localvimrc'
 " VimPager: Using for convenient installer, but don't enable plugin
 Plug 'rkitover/vimpager', { 'on': 'Page' }
 
+
 """""""""""""""""""""""""""""""""""""""""""
 " Navigation Plugins
 """""""""""""""""""""""""""""""""""""""""""
 
 " Ack: Integration with ack/ag searching
-Plug 'https://github.com/mileszs/ack.vim'
+Plug 'https://github.com/mileszs/ack.vim', { 'on': 'Ack' }
 
 " TagList: File navigation by sub routines
-Plug 'taglist.vim'
+Plug 'taglist.vim', { 'on': 'TlistToggle' }
 
 " FastFold: Fixed a bug where vim tries to refold and causes severe slow down
 Plug 'https://github.com/Konfekt/FastFold'
@@ -31,6 +32,7 @@ Plug 'https://github.com/easymotion/vim-easymotion'
 
 " CtrlP: Fuzzy file finder
 Plug 'https://github.com/kien/ctrlp.vim'
+
 
 """""""""""""""""""""""""""""""""""""""""""
 " Lazy Typing Plugins
@@ -56,6 +58,7 @@ Plug 'https://github.com/tpope/vim-commentary'
 
 " Surround: easily manage surround areas with '")({})"' etc
 Plug 'https://github.com/tpope/vim-surround'
+
 
 """""""""""""""""""""""""""""""""""""""""""
 " Version Control Plugins
