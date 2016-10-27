@@ -8,7 +8,7 @@ function doIt() {
         echo "sourcing bash"
         source ~/.bash_profile
     fi
-    vim +PlugInstall +qall
+    vim +PlugUpdate +qall
 }
 if [ "$1" == "--force" -o "$1" == "-f" ]; then
 	doIt
