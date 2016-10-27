@@ -49,4 +49,7 @@ Plug 'https://github.com/airblade/vim-gitgutter'
 " IndentGuides: Highlight indent levels
 Plug 'https://github.com/nathanaelkane/vim-indent-guides' { 'for':  'python' }
 
+" Templates: Provide boilerplate templates
+Plug 'https://github.com/aperezdc/vim-template'
+
 call plug#end()
