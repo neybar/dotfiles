@@ -43,4 +43,7 @@ Plug 'https://github.com/terryma/vim-expand-region'
 " GitGutter: Shows inline git symbols for changed/added/removed lines
 Plug 'https://github.com/airblade/vim-gitgutter'
 
+" IndentGuides: Highlight indent levels
+Plug 'https://github.com/nathanaelkane/vim-indent-guides' { 'for':  'python' }
+
 call plug#end()
