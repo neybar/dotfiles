@@ -18,4 +18,7 @@ Plug 'https://github.com/pearofducks/ansible-vim'
 " Auto-Pairs: Auto close pairs of things Eg: ""''{} etc
 Plug 'https://github.com/jiangmiao/auto-pairs'
 
+" CloseTag: Try to close matching <p> tags
+Plug 'https://github.com/alvan/vim-closetag'
+
 call plug#end()
