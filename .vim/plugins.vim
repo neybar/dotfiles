@@ -48,6 +48,11 @@ Plug 'https://github.com/ervandew/supertab'
 
 " AutoPairs: Auto close pairs of things Eg: ""''{} etc
 Plug 'https://github.com/jiangmiao/auto-pairs'
+let g:AutoPairsFlyMode = 1
+let g:AutoPairsShortcutBackInsert = '<Leader>b'
+let g:AutoPairsShortcutJump= '<Leader>n'
+let g:AutoPairsShortcutFastWrap= '<Leader>e'
+
 
 " CloseTag: Try to close matching <p> tags
 Plug 'https://github.com/alvan/vim-closetag'

@@ -239,11 +239,6 @@ let delimitMate_expand_space = 1
 let delimitMate_expand_inside_quotes = 1
 let delimitMate_jump_expansion = 1
 
-let g:AutoPairsFlyMode = 1
-let g:AutoPairsShortcutBackInsert = '<Leader>b'
-let g:AutoPairsShortcutJump= '<Leader>n'
-let g:AutoPairsShortcutFastWrap= '<Leader>e'
-
 if executable('ag')
   " Use ag over grep
   set grepprg=ag\ --vimgrep\ $*
