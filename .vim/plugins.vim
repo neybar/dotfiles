@@ -34,4 +34,7 @@ Plug 'https://github.com/ervandew/supertab'
 " Commentary: easily comment out code
 Plug 'https://github.com/tpope/vim-commentary'
 
+" ExpandRegion: allows easy expansion of visual selections
+Plug 'https://github.com/terryma/vim-expand-region'
+
 call plug#end()
