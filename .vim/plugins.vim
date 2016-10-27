@@ -23,6 +23,11 @@ Plug 'https://github.com/mileszs/ack.vim', { 'on': 'Ack' }
 
 " TagList: File navigation by sub routines
 Plug 'taglist.vim', { 'on': 'TlistToggle' }
+" Set some defaults for taglist
+let Tlist_Close_On_Select = 1
+let Tlist_GainFocus_On_ToggleOpen = 1
+" Set a mapping for the taglist.vim plugin.  Toggles the taglist window.
+nmap <leader>t :TlistToggle<cr>
 
 " FastFold: Fixed a bug where vim tries to refold and causes severe slow down
 Plug 'https://github.com/Konfekt/FastFold'

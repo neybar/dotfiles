@@ -238,11 +238,6 @@ let delimitMate_expand_cr = 2
 let delimitMate_expand_space = 1
 let delimitMate_expand_inside_quotes = 1
 let delimitMate_jump_expansion = 1
-" Set some defaults for taglist
-let Tlist_Close_On_Select = 1
-let Tlist_GainFocus_On_ToggleOpen = 1
-" Set a mapping for the taglist.vim plugin.  Toggles the taglist window.
-nmap <leader>t :TlistToggle<cr>
 
 let g:AutoPairsFlyMode = 1
 let g:AutoPairsShortcutBackInsert = '<Leader>b'
