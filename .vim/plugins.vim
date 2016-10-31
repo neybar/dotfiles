@@ -100,6 +100,9 @@ Plug 'https://github.com/tpope/vim-surround'
 " Exchange: easily exchange selected elements
 Plug 'tommcdo/vim-exchange'
 
+" SplitJoin: split or join code into one-liners vs verbose layouts
+Plug 'AndrewRadev/splitjoin.vim'
+
 
 """""""""""""""""""""""""""""""""""""""""""
 " Version Control Plugins
