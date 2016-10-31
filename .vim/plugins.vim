@@ -97,6 +97,9 @@ Plug 'https://github.com/tpope/vim-commentary'
 " Surround: easily manage surround areas with '")({})"' etc
 Plug 'https://github.com/tpope/vim-surround'
 
+" Exchange: easily exchange selected elements
+Plug 'tommcdo/vim-exchange'
+
 
 """""""""""""""""""""""""""""""""""""""""""
 " Version Control Plugins
