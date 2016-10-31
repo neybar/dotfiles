@@ -71,6 +71,9 @@ set pastetoggle=<F11>
 " emulate pastetoggle with a normal mode mapping
 nmap <leader>pp :setlocal paste! paste?<CR>
 
+" allow 'jk' to call <Esc>.  Mostly as a way around apple's new keyboard
+imap jk <Esc>
+
 set autowrite
 set wildmode=list:longest,full
 set shiftround
