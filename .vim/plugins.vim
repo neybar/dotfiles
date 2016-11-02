@@ -1,8 +1,6 @@
 call plug#begin()
 
-"""""""""""""""""""""""""""""""""""""""""""
-" General Utility Plugins
-"""""""""""""""""""""""""""""""""""""""""""
+" General Utility Plugins {{{
 
 " Matchit: Include matchit for vim < 7
 if v:version >= 800
@@ -26,10 +24,9 @@ Plug 'tpope/vim-repeat'
 Plug 'vim-airline/vim-airline'
 let g:airline_powerline_fonts = 1
 let g:airline_inactive_collapse = 1
+"}}}
 
-"""""""""""""""""""""""""""""""""""""""""""
-" Navigation Plugins
-"""""""""""""""""""""""""""""""""""""""""""
+" Navigation Plugins {{{ 
 
 " Ack: Integration with ack/ag searching
 Plug 'https://github.com/mileszs/ack.vim', { 'on': 'Ack' }
@@ -58,11 +55,9 @@ nnoremap <leader>N :NERDTreeToggle<CR>
 " Gundo: Undo tree visualizer
 Plug 'sjl/gundo.vim', { 'on': 'GundoToggle' }
 nnoremap <leader>u :GundoToggle<CR>
+" }}}
 
-
-"""""""""""""""""""""""""""""""""""""""""""
-" Lazy Typing Plugins
-"""""""""""""""""""""""""""""""""""""""""""
+" Lazy Typing Plugins {{{
 
 " Supertab: autocompletion with Tab
 Plug 'https://github.com/ervandew/supertab'
@@ -102,11 +97,9 @@ Plug 'tommcdo/vim-exchange'
 
 " SplitJoin: split or join code into one-liners vs verbose layouts
 Plug 'AndrewRadev/splitjoin.vim'
+" }}}
 
-
-"""""""""""""""""""""""""""""""""""""""""""
-" Version Control Plugins
-"""""""""""""""""""""""""""""""""""""""""""
+" Version Control Plugins {{{
 
 " GitGutter: Shows inline git symbols for changed/added/removed lines
 Plug 'https://github.com/airblade/vim-gitgutter'
@@ -116,22 +109,18 @@ Plug 'https://github.com/tpope/vim-fugitive'
 
 " VCSCommand: VCS (cvs,svn,git,hg) managment
 Plug 'vim-scripts/vcscommand.vim'
+" }}}
 
-
-"""""""""""""""""""""""""""""""""""""""""""
-" Language Plugins
-"""""""""""""""""""""""""""""""""""""""""""
+" Language Plugins {{{
 
 " Perl: yup
 Plug 'vim-perl/vim-perl', { 'for': 'perl', 'do': 'make clean carp dancer highlight-all-pragmas moose test-more try-tiny'  }
 "
 " IndentGuides: Highlight indent levels
 Plug 'https://github.com/nathanaelkane/vim-indent-guides', { 'for':  'python' }
+" }}}
 
-
-"""""""""""""""""""""""""""""""""""""""""""
-" Syntax Plugins
-"""""""""""""""""""""""""""""""""""""""""""
+" Syntax Plugins {{{
 
 " JSON: syntax highlighter
 Plug 'elzr/vim-json'
@@ -141,5 +130,12 @@ Plug 'pearofducks/ansible-vim'
 
 " SCSS: for sassy css
 Plug 'cakebaker/scss-syntax.vim'
+" }}}
+
+" Color Plugins {{{
+Plug 'altercation/vim-colors-solarized'
+" }}}
 
 call plug#end()
+
+" vim:foldmethod=marker:foldlevel=0

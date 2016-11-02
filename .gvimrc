@@ -1,8 +1,8 @@
-" Use the excellent Railscat theme by Jeff Kreeftmeijer (gVim-only)
-colorscheme railscat
-" Use 14pt Menlo
-set guifont=Menlo:h14
+set background=dark
+colorscheme solarized
+" Use 14pt Powerline font
+set guifont=Droid\ Sans\ Mono\ Slashed\ for\ Powerline:h14
 " Better line-height
-set linespace=8
+set linespace=2
 " Hide the mouse when typing text
 set mousehide
