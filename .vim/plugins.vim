@@ -82,6 +82,8 @@ Plug 'https://github.com/alvan/vim-closetag'
 
 " ExpandRegion: allows easy expansion of visual selections
 Plug 'https://github.com/terryma/vim-expand-region'
+vmap v <Plug>(expand_region_expand)
+vmap <C-v> <Plug>(expand_region_shrink)
 
 " Templates: Provide boilerplate templates
 Plug 'https://github.com/aperezdc/vim-template'

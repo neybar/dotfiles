@@ -1,43 +1,19 @@
-" General Settings
+"colors and fonts {{{
+syntax enable
+colors desert
+set background=dark
+
+if has("gui_running")
+    set guioptions-=T
+    set t_Co=256
+    set nu
+endif
+" }}}
+" general settings {{{
 set nocompatible
-set history=300		" keep 300 lines of command line history
-
-" With a map leader it's possible to do extra key combinations
-" like <leader>w saves the current file
-let mapleader = ","
-let g:mapleader = ","
-
-" Fast saving
-nmap <leader>w :w!<cr>
-
-" user interface
-" backspace config
-set backspace=indent,eol,start
-set whichwrap+=<,>,h,l
-set wildmenu        " Turn on wild menu
-set ruler	    	" show the cursor position all the time
-set autoindent		" always set autoindenting on
-if has("vms")
-  set nobackup		" do not keep a backup file, use versions instead
-else
-  set backup		" keep a backup file
-endif
-set backupdir=~/.vim/backups
-set directory=~/.vim/swaps
-if exists("&undodir")
-    set undodir=~/.vim/undo
-endif
-set showcmd	    	" display incomplete commands
-set ignorecase      " ignore case when searching
-set infercase       " allow insert mode completion to be smart about matching
-set smartcase       " don't ignore case when looking for Caps
-set hlsearch        " highlight search terms
-set incsearch       " show partial search matches
-set magic           " set magic on for regex
-set showmatch       " show matching brackets when text indicator is over them
-set mat=2           " how long to blink the brackets
-set cursorline      " underline the current line
-
+set history=300		           " keep 300 lines of command line history
+set backspace=indent,eol,start "backspace config
+" viminfo remembers the state of vim from session to session
 "           +--Disable hlsearch while loading viminfo
 "           | +--Remember marks for last 500 files
 "           | |    +--Remember up to 10000 lines in each register
@@ -47,82 +23,83 @@ set cursorline      " underline the current line
 "           | |    |      |     |     |
 "           v v    v      v     v     v
 set viminfo=h,'500,<10000,s1000,/1000,:1000
-
-"No sound on errors
-set noerrorbells
+set modelines=5
+set virtualedit=block
+set fileformats=unix,dos,mac "Default file types (in particular what line endings to use)
+" }}}
+" text, tab and indent {{{
+set expandtab             "turn tabs into spaces
+set shiftwidth=4
+set tabstop=4
+set smarttab              "might need to remove this
+set ai                    "Auto indent
+set shiftround
+set wrap                  " Wrap lines
+filetype plugin indent on " Enable file type detection.
+" }}}
+" user interface {{{
+set showcmd	    	" display incomplete commands
+set cursorline      " underline the current line
+set wildmenu        " Turn on wild menu
+set wildmode=list:longest,full
+set showmatch       " show matching brackets when text indicator is over them
+set ruler	    	" show the cursor position all the time
+set whichwrap+=<,>,h,l
+set statusline=%F%m%r%h%w\ [FORMAT=%{&ff}]\ [TYPE=%Y]\ [ASCII=\%03.3b]\ [HEX=\%02.2B]\ [POS=%04l,%04v][%p%%]\ [LEN=%L]
+set laststatus=2    " always show statusline
+set noerrorbells    " No sound on errors
 set novisualbell
 set t_vb=
+set scrolloff=3     "Start scrolling three lines before bottom of window
+" }}}
+" search {{{
+set ignorecase      " ignore case when searching
+set infercase       " allow insert mode completion to be smart about matching
+set smartcase       " don't ignore case when looking for Caps
+set hlsearch        " highlight search terms
+set incsearch       " show partial search matches
+set magic           " set magic on for regex
+set mat=2           " how long to blink the brackets
+" Search down into subfolders
+" Provides tab-completion for all file-related tasks
+set path+=**
+" }}}
+" backup, swap files {{{
+if has("vms")
+  set nobackup		" do not keep a backup file, use versions instead
+else
+  set backup		" keep a backup file
+endif
+set backupdir=~/.vim/backups
+set directory=~/.vim/swaps
+set updatecount=10 "save file every 10 keystrokes?
+set autowrite
+if exists("&undodir")
+    set undodir=~/.vim/undo
+endif
+" }}}
+" leader Shortcuts {{{
+" With a map leader it's possible to do extra key combinations
+" like <leader>w saves the current file
+let mapleader = ","
+let g:mapleader = ","
 
-" Setup some short cuts
-" I prefer the F? keys, but on some systems (osx) they get hijacked
-" so I've been training myself to use some other shortcuts.  I'll
-" probably remove the F? keys some day... maybe.
+" Fast saving
+nmap <leader>w :w!<cr>
 
 " I'm using Conway's hlnext plugin for searching.  If that plugin is removed then change the nohlsearch back
 " map <leader>hl :nohlsearch<CR>
 nmap <leader>hl :call HLNextOff() <BAR> :nohlsearch<CR>
-" map <F12> :nohlsearch<CR>
-nmap <F12> :call HLNextOff() <BAR> :nohlsearch<CR>
-
-nmap <F5> :make <cr>
 map <leader>ma :make<cr>
 
-set pastetoggle=<F11>
 " emulate pastetoggle with a normal mode mapping
 nmap <leader>pp :setlocal paste! paste?<CR>
-
-" allow 'jk' to call <Esc>.  Mostly as a way around apple's new keyboard
-imap jk <Esc>
-
-set autowrite
-set wildmode=list:longest,full
-set shiftround
-set updatecount=10 "save file every 10 keystrokes?
-set modeline
-set statusline=%F%m%r%h%w\ [FORMAT=%{&ff}]\ [TYPE=%Y]\ [ASCII=\%03.3b]\ [HEX=\%02.2B]\ [POS=%04l,%04v][%p%%]\ [LEN=%L]
-set laststatus=2
-set virtualedit=block
-set scrolloff=3    "Start scrolling three lines before bottom of window
-
-" Search down into subfolders
-" Provides tab-completion for all file-related tasks
-set path+=**
-
-"colors and fonts
-syntax enable
-colors desert
-set background=dark
-set fileformats=unix,dos,mac "Default file types (in particular what line endings to use)
-
-if has("gui_running")
-    set guioptions-=T
-    set t_Co=256
-    set nu
-endif
-
-"Text, tab and indent related
-set expandtab "turn tabs into spaces
-set shiftwidth=4
-set tabstop=4
-set smarttab "might need to remove this
-set foldlevelstart=1
-
-
-set ai "Auto indent
-set si "Smart indent
-"disable clearing to the begining of the line when entering #
-"inoremap # X#
-set wrap "Wrap lines
 
 "Allow searching in visual block
 "select block then hit <leader>/ to search.  Using <leader>/ again will search
 "in the same block
 map <leader>/ /\%V
 vmap <leader>/ <Esc>/\%V
-
-"Allow vim-expand-region to use v and C-v to expand
-vmap v <Plug>(expand_region_expand)
-vmap <C-v> <Plug>(expand_region_shrink)
 
 map <leader>t2 :setlocal shiftwidth = 2<cr>
 map <leader>t4 :setlocal shiftwidth = 4<cr>
@@ -148,18 +125,30 @@ map <leader>sp [s
 map <leader>sa zg
 map <leader>s? z=
 
-" Enable file type detection.
-filetype plugin indent on
+" Remove the Windows ^M - when the encodings gets messed up
+noremap <Leader>m mmHmt:%s/<C-V><cr>//ge<cr>'tzt'm
 
-"Double-delete to remove trailing whitespace...
-map <silent> <BS><BS>  mz:call TrimTrailingWS()<CR>`z
 
+" }}}
+" mappings {{{
+imap jk <Esc>
+" }}}
+" folding {{{
+set foldmethod=indent " fold based on indent level
+set foldnestmax=10    " max 10 depth
+set foldenable        " don't fold files by default on open
+set foldlevelstart=1  " start with fold level of 1
+" }}}
+" custom functions {{{
 function! TrimTrailingWS ()
     if search('\s\+$', 'cnw')
         :%s/\s\+$//g
     endif
 endfunction
-
+"Double-delete to remove trailing whitespace...
+map <silent> <BS><BS>  mz:call TrimTrailingWS()<CR>`z
+" }}}
+" autogroup {{{
 " Only do this part when compiled with support for autocommands.
 if has("autocmd")
 
@@ -191,7 +180,8 @@ if has("autocmd")
   endif
 
 endif " has("autocmd")
-
+" }}}
+" plugins {{{
 if executable('ag')
   " Use ag over grep
   set grepprg=ag\ --vimgrep\ $*
@@ -202,9 +192,7 @@ if executable('ag')
   let g:ctrlp_user_command = 'ag %s -l --nocolor --hidden --ignore .git --ignore .DS_Store -g ""'
 endif
 
-" Remove the Windows ^M - when the encodings gets messed up
-noremap <Leader>m mmHmt:%s/<C-V><cr>//ge<cr>'tzt'm
-
 runtime plugins.vim
-"
-"
+" }}}
+
+" vim:foldmethod=marker:foldlevel=0
