@@ -4,22 +4,21 @@
 
 ### Using Git and the bootstrap script
 
-You can clone the repository wherever you want. (I like to keep it in `~/Projects/dotfiles`, with `~/dotfiles` as a symlink.) The bootstrapper script will pull in the latest version and copy the files to your home folder.
+You can clone the repository wherever you want. (I like to keep it in `~/Projects/dotfiles`, with `~/dotfiles` as a symlink.) The Makefile will pull in the latest version and copy the files to your home folder.
 
 ```bash
-git clone https://github.com/neybar/dotfiles.git && cd dotfiles && source bootstrap.sh
+git clone https://github.com/neybar/dotfiles.git && cd dotfiles && make install
 ```
 
 To update, `cd` into your local `dotfiles` repository and then:
 
 ```bash
-source bootstrap.sh
+make update
 ```
-
-Alternatively, to update while avoiding the confirmation prompt:
-
+if you are making local change and just want to copy files into place then:
 ```bash
-set -- -f; source bootstrap.sh
+make install # will copy files and run vim
+make copy    # will only copy
 ```
 
 ### Git-free install
@@ -27,7 +26,7 @@ set -- -f; source bootstrap.sh
 To install these dotfiles without Git:
 
 ```bash
-cd; curl -#L https://github.com/neybar/dotfiles/tarball/master | tar -xzv --strip-components 1 --exclude={README.md,bootstrap.sh,LICENSE-MIT.txt}
+cd; curl -#L https://github.com/neybar/dotfiles/tarball/master | tar -xzv --strip-components 1 --exclude={README.md,Makefile,LICENSE-MIT.txt}
 ```
 
 To update later on, just run that command again.
@@ -75,14 +74,6 @@ When setting up a new Mac, you may want to install some common [Homebrew](http:/
 
 ```bash
 brew bundle ~/Brewfile
-```
-
-### Install native apps with `brew cask`
-
-You could also install native apps with [`brew cask`](https://github.com/phinze/homebrew-cask):
-
-```bash
-brew bundle ~/Caskfile
 ```
 
 ## Feedback
