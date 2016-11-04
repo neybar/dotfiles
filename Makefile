@@ -3,6 +3,8 @@
 #
 .PHONY: fetch copy install update clean unlink
 
+update: fetch install
+
 fetch:
 	git pull
 
@@ -18,8 +20,6 @@ copy:
 install: copy
 	source ~/.bash_profile
 	vim +PlugUpdate +qall
-
-update: fetch install
 
 # remove any directories since rsync isn't quite smart enough.
 unlink:
