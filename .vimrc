@@ -50,7 +50,8 @@ set laststatus=2    " always show statusline
 set noerrorbells    " No sound on errors
 set novisualbell
 set t_vb=
-set scrolloff=3     "Start scrolling three lines before bottom of window
+set scrolloff=3     " Start scrolling three lines before bottom of window
+set splitright      " make new vertical splits go to the right
 " }}}
 " search {{{
 set ignorecase      " ignore case when searching

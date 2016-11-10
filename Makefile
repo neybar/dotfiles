@@ -3,11 +3,13 @@
 #
 .PHONY: fetch copy install update clean unlink
 
+update: fetch install
+
 fetch:
-	git pull
+	@git pull
 
 copy:
-	rsync --exclude ".git/" \
+	@rsync --exclude ".git/" \
 		  --exclude ".DS_STORE" \
 		  --exclude "Makefile" \
 		  --exclude "README.md" \
@@ -16,15 +18,14 @@ copy:
 		  -avh --no-perms . ~
 
 install: copy
-	source ~/.bash_profile
-	vim +PlugUpdate +qall
-
-update: fetch install
+	@/bin/bash ~/.bash_profile
+	@vim +PlugUpdate +qall
+	@echo "\033[0;31mCall 'source ~/.bash_profile' to get new changes\033[0m"
 
 # remove any directories since rsync isn't quite smart enough.
 unlink:
-	rm -rf ~/.vim
-	rm -rf ~/.vagrant.d
+	@rm -rf ~/.vim
+	@rm -rf ~/.vagrant.d
 
 clean: unlink update
 

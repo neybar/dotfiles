@@ -67,7 +67,8 @@ export FZF_DEFAULT_COMMAND='ag --hidden --ignore .git -g ""'
 export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
 
 # Setup ssh agent so it works across tmux sessions
-if [ -z "$TMUX" ]; then
+# export NO_TMUX=1 in ~/.system or ~/.extra if you don't want to automatically start tmux
+if [ ! -z "$NO_TMUX"  ] && [ -z "$TMUX"  ]; then
     # we're not in a tmux session
 
     if [ ! -z "$SSH_TTY" ]; then
