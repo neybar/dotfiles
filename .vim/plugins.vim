@@ -116,7 +116,7 @@ Plug 'vim-scripts/vcscommand.vim'
 " Language Plugins {{{
 
 " Perl: yup
-Plug 'vim-perl/vim-perl', { 'for': 'perl', 'do': 'make clean carp dancer highlight-all-pragmas moose test-more try-tiny'  }
+Plug 'neybar/vim-perl', { 'for': 'perl', 'do': 'make clean carp dancer highlight-all-pragmas moose test-more try-tiny'  }
 "
 " IndentGuides: Highlight indent levels
 Plug 'https://github.com/nathanaelkane/vim-indent-guides', { 'for':  'python' }
