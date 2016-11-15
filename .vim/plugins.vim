@@ -30,6 +30,8 @@ let g:airline_inactive_collapse = 1
 
 " Ack: Integration with ack/ag searching
 Plug 'https://github.com/mileszs/ack.vim', { 'on': 'Ack' }
+cnoreabbrev Ack Ack!
+nnoremap <Leader>a :Ack!<Space>
 
 " TagList: File navigation by sub routines
 Plug 'taglist.vim', { 'on': 'TlistToggle' }
