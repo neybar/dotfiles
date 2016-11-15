@@ -5,6 +5,7 @@ set tags=./tags;/,tags;/
 set errorformat=%f:%l:%m
 let g:perl_fold=1
 let perl_fold=1
+let g:perl_cuddle_indent=1
 set keywordprg=perldoc\ -T\ -f "let K call perldoc instead of man
 "set define=^\\s*sub This was set by vim-perl
 
