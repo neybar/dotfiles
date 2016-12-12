@@ -75,8 +75,9 @@ set backupdir=~/.vim/backups
 set directory=~/.vim/swaps
 set updatecount=10 "save file every 10 keystrokes?
 set autowrite
-if exists("&undodir")
-    set undodir=~/.vim/undo
+if has('persistent_undo')
+    set undodir=$HOME/.vim/undo
+    set undofile
 endif
 " }}}
 " leader Shortcuts {{{
