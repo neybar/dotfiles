@@ -63,50 +63,23 @@ case $TERM in
         ;;
 esac
 
-parse_git_branch () {
-       if git rev-parse --git-dir >/dev/null 2>&1
-       then
-               MYGIT=$(git branch 2>/dev/null| sed -n '/^\*/s/^\* //p')
-               return 0
-       else
-               MYGIT=""
-               return 1
-       fi
+get_gi_branch () {
+    gi_branch=''
+    if [ -z "$(git rev-parse --show-toplevel 2>/dev/null)" ]; then return; fi
+    gi_branch=$(git symbolic-ref --short HEAD 2>/dev/null)
+    if [ -z "$gi_branch" ]; then
+        gi_branch=$(git branch 2>/dev/null | sed -n '/^\*/s/^\* //p');
+        if [ -z "$gi_branch" ]; then return; fi
+    fi
+    if git diff --quiet 2>&1 1>/dev/null; then
+        if git diff --quiet --staged 2>&1 1>/dev/null; then
+            gi_col=$GREEN; else gi_col=$YELLOW; fi
+    else gi_col=$RED; fi
 }
 
-print_git_color () {
-       if parse_git_branch
-       then
-               if git diff --quiet 2>/dev/null >&2
-               then
-                    if git diff --quiet --staged 2>/dev/null >&2
-                        then
-                           echo -n "$GREEN"
-                        else
-                            echo -n "$RED"
-                    fi
-               else
-                       echo -n "$RED"
-               fi
-       fi
-}
-
-root_is_gi_red () {
-        if [ "${USER}" == "root" ]
-        then
-                echo "$RED"
-        else
-                echo "$GREEN"
-        fi
-}
-
-print_git_branch () {
-       if parse_git_branch
-       then
-               print_git_color
-               echo -n "($MYGIT)"
-               echo "$RESET"
-       fi
+print_git () {
+    get_gi_branch;
+    if [[ ! -z "$gi_branch" ]]; then echo -n "$gi_col($gi_branch)$RESET"; fi
 }
 
 # export PS1='`jobs | sed "s/  */ /g" | cut -d" " -f1,3- | sed "s/\\[\([0-9]*\)\\]/\\[\e[1;33m\1\e[0;37m\\]/" `\n[\u@\h \W]\$ '
@@ -116,7 +89,7 @@ prompt_command () {
     if [[ ! -z "${JOBS}" ]]; then
         echo -e "$JOBS";
     fi
-    print_git_branch
+    print_git;
     unset JOBS;
 }
 #export PROMPT_COMMAND=prompt_command
