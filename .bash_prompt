@@ -106,3 +106,8 @@ if [[ ! $HIDE_PS1 ]]; then
     export PS1='[\u@\h \W]\$ ';
     unset HIDE_PS1;
 fi
+
+if [[ $LIVE_SYSTEM ]]; then
+    export PS1="$RED$PS1$RESET";
+    unset LIVE_SYSTEM;
+fi
