@@ -106,7 +106,7 @@ Plug 'AndrewRadev/splitjoin.vim'
 " Version Control Plugins {{{
 
 " GitGutter: Shows inline git symbols for changed/added/removed lines
-Plug 'https://github.com/airblade/vim-gitgutter'
+Plug 'https://github.com/airblade/vim-gitgutter', executable('git') ? {} : { 'on': [] }
 
 " Fugitive: Git wrapper
 Plug 'https://github.com/tpope/vim-fugitive'
