@@ -24,6 +24,9 @@ Plug 'tpope/vim-repeat'
 Plug 'vim-airline/vim-airline'
 let g:airline_powerline_fonts = 1
 let g:airline_inactive_collapse = 1
+
+" BracketedPaste: automatically turn off and on paste mode
+Plug 'ConradIrwin/vim-bracketed-paste'
 "}}}
 
 " Navigation Plugins {{{ 
