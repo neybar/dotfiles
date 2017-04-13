@@ -50,6 +50,11 @@ if which brew &> /dev/null && [ -f "$(brew --prefix)/etc/bash_completion" ]; the
 	source "$(brew --prefix)/etc/bash_completion"
 fi
 
+# add updated gnu commands to path on OS X if coreutils is installed
+if which brew &> /dev/null && [ -d "$(brew --prefix coreutils)/libexec/gnubin" ]; then
+    export PATH="$(brew --prefix coreutils)/libexec/gnubin: $PATH"
+fi
+
 # Enable tab completion for `g` by marking it as an alias for `git`
 if type _git &> /dev/null && [ -f /usr/local/etc/bash_completion.d/git-completion.bash ]; then
 	complete -o default -o nospace -F _git g

@@ -23,16 +23,12 @@ brew 'bash-completion'
 brew 'wget', args: ['enable-iri']
 
 # Install more recent versions of some OS X tools
-brew 'homebrew/dupes/grep'
 brew 'vim', args: ['override-system-vi']
-
-# This formula didn’t work well last time I tried it:
-#install homebrew/dupes/screen
 
 # Install other useful binaries
 brew 'ack'
 brew 'ansible'
-brew 'caskroot/cask/java'
+#brew 'caskroot/cask/java'
 brew 'ctags'
 brew 'cvs'
 brew 'dark-mode' #toggle OSX menu bar dark/light mode with dark-mode command
@@ -49,7 +45,7 @@ brew 'node' # This installs `npm` too using the recommended installation method
 brew 'optipng'
 brew 'p7zip'
 brew 'perl-build'
-brew 'pigz'
+brew 'pigz' # multi-processor gzip
 brew 'plenv'
 brew 'readline'
 brew 'rename'
@@ -64,7 +60,6 @@ brew 'webkit2png'
 brew 'youtube-dl'
 
 # Casks
-brew 'caskroom/cask/brew-cask'
 tap  'caskroom/cask'
 tap  'caskroom/versions'
 
@@ -72,24 +67,21 @@ cask 'adium'
 cask 'bettertouchtools'
 cask 'cheatsheet'
 cask 'dropbox'
-cask 'firefox'
+#cask 'firefox'
 cask 'google-chrome'
 cask 'imagealpha'
 cask 'imageoptim'
 cask 'istat-menus'
-cask 'keepassx0' #keepassx 0.4.3 eventually keepassx2.0 will be ready and I can remove the "0"
+#cask 'keepassx0' #keepassx 0.4.3 eventually keepassx2.0 will be ready and I can remove the "0"
 cask 'limechat'
 cask 'macdown'
 cask 'macvim'
-cask 'parallels9'
 cask 'quicksilver'
 cask 'spotify'
 cask 'steam'
-#cask 'synergy'
 cask 'tagger' # MP3 ID3 Tag editor
 cask 'torbrowser'
 cask 'transmission'
-cask 'tunnelblick'
 cask 'virtualbox'
 cask 'vlc'
 cask 'xquartz'
