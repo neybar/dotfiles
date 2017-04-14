@@ -79,6 +79,7 @@ cask 'macvim'
 cask 'quicksilver'
 cask 'spotify'
 cask 'steam'
+cask 'scroll-reverser' #allows mouse and trackpad to have separate scroll directions
 cask 'tagger' # MP3 ID3 Tag editor
 cask 'torbrowser'
 cask 'transmission'
