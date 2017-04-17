@@ -137,6 +137,9 @@ Plug 'pearofducks/ansible-vim'
 
 " SCSS: for sassy css
 Plug 'cakebaker/scss-syntax.vim'
+
+" HashiCorp (Syntax and other tools for Vagrant,Terraform,Packer, etc)
+Plug 'hashivim/vim-hashicorp-tools'
 " }}}
 
 " Color Plugins {{{
