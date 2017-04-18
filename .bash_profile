@@ -1,6 +1,10 @@
 # Add `~/bin` to the `$PATH`
 export PATH="$HOME/bin:$PATH"
 
+if [ -x /usr/libexec/path_helper ]; then
+	eval `/usr/libexec/path_helper -s`
+fi
+
 # Load the shell dotfiles, and then some:
 # * ~/.system can be used to ready in a /etc/bashrc or something like that ex:
 # if [ -f /etc/bashrc ]; then
@@ -51,9 +55,9 @@ if which brew &> /dev/null && [ -f "$(brew --prefix)/etc/bash_completion" ]; the
 fi
 
 # add updated gnu commands to path on OS X if coreutils is installed
-if which brew &> /dev/null && [ -d "$(brew --prefix coreutils)/libexec/gnubin" ]; then
-    export PATH="$(brew --prefix coreutils)/libexec/gnubin: $PATH"
-fi
+# if which brew &> /dev/null && [ -d "$(brew --prefix coreutils)/libexec/gnubin" ]; then
+#     export PATH="$(brew --prefix coreutils)/libexec/gnubin: $PATH"
+# fi
 
 # Enable tab completion for `g` by marking it as an alias for `git`
 if type _git &> /dev/null && [ -f /usr/local/etc/bash_completion.d/git-completion.bash ]; then
