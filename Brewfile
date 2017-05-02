@@ -49,7 +49,7 @@ brew 'pigz' # multi-processor gzip
 brew 'plenv'
 brew 'readline'
 brew 'rename'
-brew 'sqlmap'
+brew 'sqlmap' # pen test tool for SQL vulnerabilies
 brew 'ssh-copy-id'
 brew 'tag'
 brew 'the_silver_searcher'

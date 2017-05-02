@@ -122,7 +122,7 @@ Plug 'vim-scripts/vcscommand.vim'
 
 " Perl: yup
 Plug 'neybar/vim-perl', { 'for': 'perl', 'do': 'make clean carp dancer highlight-all-pragmas moose test-more try-tiny'  }
-"
+
 " IndentGuides: Highlight indent levels
 Plug 'https://github.com/nathanaelkane/vim-indent-guides', { 'for':  'python' }
 " }}}
@@ -140,6 +140,12 @@ Plug 'cakebaker/scss-syntax.vim'
 
 " HashiCorp (Syntax and other tools for Vagrant,Terraform,Packer, etc)
 Plug 'hashivim/vim-hashicorp-tools'
+
+" Groovy: syntax files
+Plug 'vim-scripts/groovy.vim'
+
+" Jenkinsfile: helper that loads up Groovy and a few other keywords
+Plug 'martinda/Jenkinsfile-vim-syntax'
 " }}}
 
 " Color Plugins {{{
