@@ -36,13 +36,13 @@ Plug 'https://github.com/mileszs/ack.vim', { 'on': 'Ack' }
 cnoreabbrev Ack Ack!
 nnoremap <Leader>a :Ack!<Space>
 
-" TagList: File navigation by sub routines
-Plug 'taglist.vim', { 'on': 'TlistToggle' }
-" Set some defaults for taglist
-let Tlist_Close_On_Select = 1
-let Tlist_GainFocus_On_ToggleOpen = 1
-" Set a mapping for the taglist.vim plugin.  Toggles the taglist window.
-nmap <leader>t :TlistToggle<cr>
+" Tagbar: ctag file navigation
+Plug 'majutsushi/tagbar'
+" Set some defaults for tagbar
+let g:tagbar_autoclose = 1
+let g:tagbar_left = 1
+" Set a mapping for the tagbar.vim plugin.  Toggles the tagbar window.
+nmap <leader>t :TagbarToggle<cr>
 
 " FastFold: Fixed a bug where vim tries to refold and causes severe slow down
 Plug 'https://github.com/Konfekt/FastFold'
