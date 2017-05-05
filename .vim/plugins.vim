@@ -138,7 +138,7 @@ Plug 'pearofducks/ansible-vim'
 " SCSS: for sassy css
 Plug 'cakebaker/scss-syntax.vim'
 
-" HashiCorp (Syntax and other tools for Vagrant,Terraform,Packer, etc)
+" HashiCorp: (Syntax and other tools for Vagrant,Terraform,Packer, etc)
 Plug 'hashivim/vim-hashicorp-tools'
 
 " Groovy: syntax files
@@ -150,8 +150,18 @@ Plug 'martinda/Jenkinsfile-vim-syntax'
 
 " Color Plugins {{{
 Plug 'altercation/vim-colors-solarized'
+" color settings are after plug#end because vim can't find the colorscheme at
+" this point in time.
 " }}}
 
 call plug#end()
+
+colorscheme solarized
+let g:solarized_diffmode="high"
+if &diff
+    " override the colorscheme for vimdiff.  This is the best colorscheme for
+    " diff operations that I've found by far
+    colorscheme solarized
+endif
 
 " vim:foldmethod=marker:foldlevel=0
