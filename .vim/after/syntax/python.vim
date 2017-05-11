@@ -10,3 +10,5 @@ syn match pythonError "^\s*if\s.*[^\:]$" display
 syn match pythonError "^\s*except\s.*[^\:]$" display
 syn match pythonError "[;]$" display
 syn keyword pythonError         do
+
+let g:indent_guides_enable_on_vim_startup = 1

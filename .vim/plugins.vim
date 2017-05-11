@@ -27,6 +27,9 @@ let g:airline_inactive_collapse = 1
 
 " BracketedPaste: automatically turn off and on paste mode
 Plug 'ConradIrwin/vim-bracketed-paste'
+
+" Dispatch: kick off jobs based on actions (Installed for Omnisharp)
+Plug 'tpope/vim-dispatch'
 "}}}
 
 " Navigation Plugins {{{ 
@@ -104,6 +107,12 @@ Plug 'tommcdo/vim-exchange'
 
 " SplitJoin: split or join code into one-liners vs verbose layouts
 Plug 'AndrewRadev/splitjoin.vim'
+
+" Ultisnips: Snippets
+Plug 'sirver/ultisnips'
+
+" VimSnippets: Various snippets for lots of languages
+Plug 'honza/vim-snippets'
 " }}}
 
 " Version Control Plugins {{{
@@ -120,12 +129,21 @@ Plug 'vim-scripts/vcscommand.vim'
 
 " Language Plugins {{{
 
+" Syntastic: Inline Syntax Checking
+Plug 'vim-syntastic/syntastic'
+
 " Perl: yup
 Plug 'neybar/vim-perl', { 'for': 'perl', 'do': 'make clean carp dancer highlight-all-pragmas moose test-more try-tiny'  }
 
 " IndentGuides: Highlight indent levels
 Plug 'https://github.com/nathanaelkane/vim-indent-guides', { 'for':  'python' }
 " }}}
+
+" Csharp: syntax, indent, etc
+Plug 'OrangeT/vim-csharp'
+Plug 'OmniSharp/omnisharp-vim'
+let g:OmniSharp_server_type = 'roslyn'
+let g:OmniSharp_timeout = 10
 
 " Syntax Plugins {{{
 
