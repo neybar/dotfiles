@@ -113,6 +113,9 @@ Plug 'sirver/ultisnips'
 
 " VimSnippets: Various snippets for lots of languages
 Plug 'honza/vim-snippets'
+
+" YouCompleteMe: Autocompletion
+Plug 'Valloric/YouCompleteMe', { 'do': './install.py' }
 " }}}
 
 " Version Control Plugins {{{
