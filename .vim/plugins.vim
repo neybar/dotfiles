@@ -95,6 +95,7 @@ vmap <C-v> <Plug>(expand_region_shrink)
 
 " Templates: Provide boilerplate templates
 Plug 'https://github.com/aperezdc/vim-template'
+let g:templates_directory = [$HOME."/.vim/templates"]
 
 " Commentary: easily comment out code
 Plug 'https://github.com/tpope/vim-commentary'
