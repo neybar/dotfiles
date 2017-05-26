@@ -166,7 +166,7 @@ Plug 'cakebaker/scss-syntax.vim'
 Plug 'hashivim/vim-hashicorp-tools'
 
 " Groovy: syntax files
-Plug 'vim-scripts/groovy.vim'
+Plug 'modille/groovy.vim'
 
 " Jenkinsfile: helper that loads up Groovy and a few other keywords
 Plug 'martinda/Jenkinsfile-vim-syntax'
