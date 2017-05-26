@@ -188,4 +188,18 @@ if &diff
     colorscheme solarized
 endif
 
+" In order to make Supertab, UltiSnips, and YouCompleteMe all work together a
+" few things need to happen.
+" First make YCM compatible with UltiSnips (using supertab) by using C-n
+let g:ycm_key_list_select_completion = ['<C-n>', '<Down>']
+let g:ycm_key_list_previous_completion = ['<C-p>', '<Up>']
+" Then make Supertab's default completion type be C-n (which will fire YCM)
+let g:SuperTabDefaultCompletionType = '<C-n>'
+
+" Finally let UltiSnips use <tab> to complete snippets.
+let g:UltiSnipsExpandTrigger = "<tab>"
+" Use Ctrl-j and Ctrl-b to navigate between snippet tabstops
+let g:UltiSnipsJumpForwardTrigger = "<c-j>"
+let g:UltiSnipsJumpBackwardTrigger = "<c-b>"
+
 " vim:foldmethod=marker:foldlevel=0
