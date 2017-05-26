@@ -116,7 +116,7 @@ Plug 'sirver/ultisnips'
 Plug 'honza/vim-snippets'
 
 " YouCompleteMe: Autocompletion
-if v:version >= 741578
+if v:version >= 704
     Plug 'Valloric/YouCompleteMe', { 'do': './install.py' }
 end
 " }}}
