@@ -100,6 +100,19 @@ let g:templates_directory = [$HOME."/.vim/templates"]
 " Commentary: easily comment out code
 Plug 'https://github.com/tpope/vim-commentary'
 
+" EasyAlign: Align all sorts of things
+Plug 'junegunn/vim-easy-align'
+" Start interactive EasyAlign in visual mode (e.g. vipga)
+xmap ga <Plug>(EasyAlign)
+" Start interactive EasyAlign for a motion/text object (e.g. gaip)
+nmap ga <Plug>(EasyAlign)
+" Quick map for aligning code in a {} block
+nmap <silent> - gavi}
+vmap <silent> - ga
+" Same thing, but assume alignment on equal sign
+nmap <silent> -- gavi}=<CR>
+vmap <silent> -- ga=<CR>
+
 " Surround: easily manage surround areas with '")({})"' etc
 Plug 'https://github.com/tpope/vim-surround'
 
