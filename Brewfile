@@ -32,6 +32,7 @@ brew 'ansible'
 brew 'ctags'
 brew 'cvs'
 brew 'dark-mode' #toggle OSX menu bar dark/light mode with dark-mode command
+brew 'diff-so-fancy' # nicer diffs
 brew 'exiftool'
 brew 'ffmpeg'
 brew 'fzf'
