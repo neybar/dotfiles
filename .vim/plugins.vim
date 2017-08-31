@@ -168,6 +168,9 @@ let g:OmniSharp_timeout = 10
 
 " JSON: syntax highlighter
 Plug 'elzr/vim-json'
+" Turn off the auto conceal feature (It hides the quote characters until you
+" move your cursor over the line)
+let g:vim_json_syntax_conceal = 0
 
 " Ansible: Provide some coloring and syntax for ansible files
 Plug 'pearofducks/ansible-vim'
