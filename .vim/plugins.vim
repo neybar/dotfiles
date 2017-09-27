@@ -164,6 +164,9 @@ Plug 'OmniSharp/omnisharp-vim'
 let g:OmniSharp_server_type = 'roslyn'
 let g:OmniSharp_timeout = 10
 
+" Go: Go functionality
+Plug 'fatih/vim-go', { 'do': ':GoInstallBinaries' }
+
 " Syntax Plugins {{{
 
 " JSON: syntax highlighter
@@ -186,6 +189,9 @@ Plug 'modille/groovy.vim'
 
 " Jenkinsfile: helper that loads up Groovy and a few other keywords
 Plug 'martinda/Jenkinsfile-vim-syntax'
+
+" Typescript: Add some typescript syntax and linting
+Plug 'leafgarland/typescript-vim'
 " }}}
 
 " Color Plugins {{{
