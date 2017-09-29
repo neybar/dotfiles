@@ -63,6 +63,7 @@ brew 'youtube-dl'
 # Casks
 tap  'caskroom/cask'
 tap  'caskroom/versions'
+tap  'buo/cask-upgrade'
 
 cask 'adium'
 cask 'bettertouchtools'
