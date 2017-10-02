@@ -78,6 +78,10 @@ cask 'istat-menus'
 cask 'limechat'
 cask 'macdown'
 cask 'macvim'
+cask 'qlcolorcode'    # Quicklook plugin for code colorizing
+cask 'qlimagesize'    # Quicklook plugin for image sizes
+cask 'qlmarkdown'     # Quicklook plugin for mark down
+cask 'quicklook-json' # Quicklook plugin for JSON formatting
 cask 'quicksilver'
 cask 'spotify'
 cask 'steam'
