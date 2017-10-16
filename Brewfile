@@ -41,6 +41,7 @@ brew 'imagemagick', args: ['with-webp']
 brew 'jhead'
 brew 'jpegoptim'
 brew 'lynx'
+brew 'macvim'
 brew 'nmap'
 brew 'node' # This installs `npm` too using the recommended installation method
 brew 'optipng'
@@ -77,7 +78,6 @@ cask 'istat-menus'
 #cask 'keepassx0' #keepassx 0.4.3 eventually keepassx2.0 will be ready and I can remove the "0"
 cask 'limechat'
 cask 'macdown'
-cask 'macvim'
 cask 'qlcolorcode'    # Quicklook plugin for code colorizing
 cask 'qlimagesize'    # Quicklook plugin for image sizes
 cask 'qlmarkdown'     # Quicklook plugin for mark down

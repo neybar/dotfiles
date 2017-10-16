@@ -30,9 +30,13 @@ Plug 'ConradIrwin/vim-bracketed-paste'
 
 " Dispatch: kick off jobs based on actions (Installed for Omnisharp)
 Plug 'tpope/vim-dispatch'
+
+" EditorConfig: Allow projects to override local config settings
+Plug 'editorconfig/editorconfig-vim'
+let g:EditorConfig_exclude_patterns = ['fugitive://.*']
 "}}}
 
-" Navigation Plugins {{{ 
+" Navigation Plugins {{{
 
 " Ack: Integration with ack/ag searching
 Plug 'https://github.com/mileszs/ack.vim', { 'on': 'Ack' }
@@ -192,6 +196,9 @@ Plug 'martinda/Jenkinsfile-vim-syntax'
 
 " Typescript: Add some typescript syntax and linting
 Plug 'leafgarland/typescript-vim'
+Plug 'Quramy/tsuquyomi/'
+let g:tsuquyomi_disable_quickfix = 1
+let g:syntastic_typescript_checkers = ['tsuquyomi'] " You shouldn't use 'tsc' checker.
 " }}}
 
 " Color Plugins {{{
