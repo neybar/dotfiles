@@ -89,9 +89,7 @@ let g:mapleader = ","
 " Fast saving
 nmap <leader>w :w!<cr>
 
-" I'm using Conway's hlnext plugin for searching.  If that plugin is removed then change the nohlsearch back
-" map <leader>hl :nohlsearch<CR>
-nmap <leader>hl :call HLNextOff() <BAR> :nohlsearch<CR>
+map <leader>hl :nohlsearch<CR>
 map <leader>ma :make<cr>
 
 " emulate pastetoggle with a normal mode mapping
