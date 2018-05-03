@@ -90,6 +90,7 @@ cask 'tagger' # MP3 ID3 Tag editor
 cask 'torbrowser'
 cask 'transmission'
 cask 'virtualbox'
+cask 'viscosity' # https://sparklabs.com/viscosity VPN client
 cask 'vlc'
 cask 'xquartz'
 cask 'ynab'
