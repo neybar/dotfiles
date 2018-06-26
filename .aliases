@@ -60,3 +60,6 @@ hash "thefuck" 2>/dev/null && { eval "$(thefuck --alias bah)"; }
 
 # make brew update easier
 hash "brew" 2>/dev/null && { alias brewski='brew update && brew upgrade && brew cu && brew cleanup; brew doctor'; }
+
+# cleanup unused docker images, layers, etc
+hash "docker" 2>/dev/null && { alias docker-cleanup='docker run --rm -v /var/run/docker.sock:/var/run/docker.sock:rw -v /var/lib/docker:/var/lib/docker:rw -e LOOP=false -e DELAY_TIME=10 meltwater/docker-cleanup:latest'; }
