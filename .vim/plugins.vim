@@ -170,7 +170,11 @@ Plug 'vim-scripts/vcscommand.vim'
 " Language Plugins {{{
 
 " Syntastic: Inline Syntax Checking
-Plug 'vim-syntastic/syntastic'
+" Plug 'vim-syntastic/syntastic'
+
+" ALE: Asynchronous Lint Engine
+Plug 'w0rp/ale'
+let g:airline#extensions#ale#enabled = 1
 
 " Perl: yup
 Plug 'neybar/vim-perl', { 'for': 'perl', 'do': 'make clean carp dancer highlight-all-pragmas moose test-more try-tiny'  }
@@ -180,10 +184,10 @@ Plug 'https://github.com/nathanaelkane/vim-indent-guides', { 'for':  'python' }
 " }}}
 
 " Csharp: syntax, indent, etc
-Plug 'OrangeT/vim-csharp'
-Plug 'OmniSharp/omnisharp-vim'
-let g:OmniSharp_server_type = 'roslyn'
-let g:OmniSharp_timeout = 10
+" Plug 'OrangeT/vim-csharp'
+" Plug 'OmniSharp/omnisharp-vim'
+" let g:OmniSharp_server_type = 'roslyn'
+" let g:OmniSharp_timeout = 10
 
 " Go: Go functionality
 Plug 'fatih/vim-go', { 'do': ':GoInstallBinaries' }

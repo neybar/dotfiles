@@ -10,6 +10,15 @@ if has("gui_running")
 endif
 " }}}
 " general settings {{{
+
+" This is to fix an error with python and vim where you will see the following
+" error: 
+" DeprecationWarning: the imp module is deprecated in favour of
+" importlib; see the module's documentation for alternative uses
+if has('python3')
+  silent! python3 1
+endif
+
 set nocompatible
 set history=300		           " keep 300 lines of command line history
 set backspace=indent,eol,start "backspace config
@@ -127,6 +136,9 @@ map <leader>s? z=
 
 " Remove the Windows ^M - when the encodings gets messed up
 noremap <Leader>m mmHmt:%s/<C-V><cr>//ge<cr>'tzt'm
+
+" Open an terminal window
+map <leader>z :botright terminal ++rows=10<cr>
 
 
 " }}}

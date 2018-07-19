@@ -5,6 +5,12 @@
 # brew tap Homebrew/bundle
 # brew bundle
 
+# Extra Repos
+tap  'caskroom/cask'
+tap  'caskroom/versions'
+tap  'buo/cask-upgrade'
+tap  'wata727/tflint'
+
 # Install GNU core utilities (those that come with OS X are outdated)
 # Don’t forget to add `$(brew --prefix coreutils)/libexec/gnubin` to `$PATH`.
 brew 'coreutils'
@@ -51,9 +57,11 @@ brew 'pigz' # multi-processor gzip
 brew 'plenv'
 brew 'readline'
 brew 'rename'
+brew 'shellcheck'
 brew 'sqlmap' # pen test tool for SQL vulnerabilies
 brew 'ssh-copy-id'
 brew 'tag'
+brew 'tflint' #terraform linter
 brew 'the_silver_searcher'
 brew 'thefuck'
 brew 'tmux'
@@ -62,10 +70,6 @@ brew 'webkit2png'
 brew 'youtube-dl'
 
 # Casks
-tap  'caskroom/cask'
-tap  'caskroom/versions'
-tap  'buo/cask-upgrade'
-
 cask 'adium'
 cask 'bettertouchtools'
 cask 'cheatsheet'
