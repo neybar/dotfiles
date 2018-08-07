@@ -29,7 +29,7 @@ To install these dotfiles without Git:
 cd; curl -#L https://github.com/neybar/dotfiles/tarball/master | tar -xzv --strip-components 1 --exclude={README.md,Makefile,LICENSE-MIT.txt}
 ```
 
-To update later on, just run that command again.
+To update later on, just run that command again. (`make` won't work for the git-free install very well)
 
 ### Specify the `$PATH`
 
@@ -47,7 +47,7 @@ If `~/.extra` exists, it will be sourced along with the other files. You can use
 
 My `~/.extra` looks something like this:
 
-```bash
+```ini
 # Git credentials
 # Not in the repository, to prevent people from accidentally committing under my name
 GIT_AUTHOR_NAME="Your Name"
@@ -68,13 +68,26 @@ When setting up a new Mac, you may want to set some sensible OS X defaults:
 ./.osx
 ```
 
+*Note*: I haven't run the `.osx` script for a while.  I mostly keep it for reference so I can apply settings when needed.  Not all of the settings in this file are needed.
+
 ### Install Homebrew formulae
 
 When setting up a new Mac, you may want to install some common [Homebrew](http://brew.sh/) formulae (after installing Homebrew, of course):
 
 ```bash
+brew update
+brew upgrade
+brew tap Homebrew/bundle
 brew bundle ~/Brewfile
 ```
+
+After getting homebrew setup, you can maintain your brews with
+
+```bash
+brewski
+```
+
+This will run homebrews' `update`, `upgrade`, `cu`, and then `cleanup` commands
 
 ## Feedback
 
