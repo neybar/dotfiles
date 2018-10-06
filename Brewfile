@@ -2,7 +2,6 @@
 # Usage:
 # brew update
 # brew upgrade
-# brew tap Homebrew/bundle
 # brew bundle
 
 # Extra Repos
@@ -71,7 +70,7 @@ brew 'youtube-dl'
 
 # Casks
 cask 'adium'
-cask 'bettertouchtools'
+cask 'bettertouchtool'
 cask 'cheatsheet'
 cask 'dropbox'
 #cask 'firefox'
@@ -79,8 +78,8 @@ cask 'google-chrome'
 cask 'imagealpha'
 cask 'imageoptim'
 cask 'istat-menus'
-#cask 'keepassx0' #keepassx 0.4.3 eventually keepassx2.0 will be ready and I can remove the "0"
-cask 'limechat'
+cask 'iterm2'
+cask 'keepassxc'
 cask 'macdown'
 cask 'qlcolorcode'    # Quicklook plugin for code colorizing
 cask 'qlimagesize'    # Quicklook plugin for image sizes
