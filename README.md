@@ -77,7 +77,6 @@ When setting up a new Mac, you may want to install some common [Homebrew](http:/
 ```bash
 brew update
 brew upgrade
-brew tap Homebrew/bundle
 brew bundle ~/Brewfile
 ```
 
