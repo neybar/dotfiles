@@ -35,6 +35,7 @@ brew 'ack'
 brew 'ansible'
 #brew 'caskroot/cask/java'
 brew 'ctags'
+brew 'curl'
 brew 'cvs'
 brew 'dark-mode' #toggle OSX menu bar dark/light mode with dark-mode command
 brew 'diff-so-fancy' # nicer diffs
