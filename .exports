@@ -28,3 +28,6 @@ export MANPAGER="less -X"
 
 # Link Homebrew casks in `/Applications` rather than `~/Applications`
 export HOMEBREW_CASK_OPTS="--appdir=/Applications"
+
+# Turn off analytics for homebrew
+export HOMEBREW_NO_ANALYTICS=1
