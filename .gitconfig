@@ -42,6 +42,8 @@
     nukeit = !git reset --hard && git clean -fd
     # run 'git alias' to list all your aliases;
     alias = config --get-regexp 'alias.*'
+    # vimdiff
+    vimdiff = "!git difftool --tool=vimdiff --no-prompt"
 
 [apply]
 	# Detect whitespace errors when applying a patch
