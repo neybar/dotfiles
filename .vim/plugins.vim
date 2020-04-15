@@ -69,21 +69,7 @@ Plug 'sjl/gundo.vim', { 'on': 'GundoToggle' }
 nnoremap <leader>u :GundoToggle<CR>
 
 " Incsearch : Include incsearch.vim for vim < 81208 otherwise use is.vim
-if v:version >= 800 && has("patch1206")
-    Plug 'https://github.com/haya14busa/is.vim'
-else
-    Plug 'https://github.com/haya14busa/incsearch.vim'
-    map /  <Plug>(incsearch-forward)
-    map ?  <Plug>(incsearch-backward)
-    map g/ <Plug>(incsearch-stay)
-    let g:incsearch#auto_nohlsearch = 1
-    map n  <Plug>(incsearch-nohl-n)
-    map N  <Plug>(incsearch-nohl-N)
-    map *  <Plug>(incsearch-nohl-*)
-    map #  <Plug>(incsearch-nohl-#)
-    map g* <Plug>(incsearch-nohl-g*)
-    map g# <Plug>(incsearch-nohl-g#)
-endif
+Plug 'https://github.com/haya14busa/is.vim'
 " }}}
 
 " Lazy Typing Plugins {{{
