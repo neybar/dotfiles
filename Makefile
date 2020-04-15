@@ -14,13 +14,16 @@ copy:
 		  --exclude "Makefile" \
 		  --exclude "README.md" \
 		  --exclude "LICENSE-MIT.txt" \
+		  --exclude "oh-my-zsh" \
+		  --exclude "zsh-custom" \
 		  --exclude "init" \
 		  -avh --no-perms . ~
 
 install: copy
-	@/bin/bash ~/.bash_profile
+	# @/bin/zsh ~/.zshrc
 	@vim +PlugUpdate +qall
-	@echo "\033[0;31mCall 'source ~/.bash_profile' to get new changes\033[0m"
+	@echo "\033[0;31mCall 'source ~/.zshrc' to get new changes\033[0m"
+
 
 # remove any directories since rsync isn't quite smart enough.
 unlink:

@@ -2,21 +2,29 @@
 
 ## Installation
 
+### ZSH
+
+I'm in the middle of a switch to ZSH and oh-my-zsh.  The installer isn't updated yet, so run the oh-my-zsh installer by hand for now.
+
+```sh
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+```
+
 ### Using Git and the bootstrap script
 
 You can clone the repository wherever you want. (I like to keep it in `~/Projects/dotfiles`, with `~/dotfiles` as a symlink.) The Makefile will pull in the latest version and copy the files to your home folder.
 
-```bash
+```sh
 git clone https://github.com/neybar/dotfiles.git && cd dotfiles && make install
 ```
 
 To update, `cd` into your local `dotfiles` repository and then:
 
-```bash
+```sh
 make update
 ```
 if you are making local change and just want to copy files into place then:
-```bash
+```sh
 make install # will copy files and run vim
 make copy    # will only copy
 ```
@@ -25,13 +33,15 @@ make copy    # will only copy
 
 To install these dotfiles without Git:
 
-```bash
+```sh
 cd; curl -#L https://github.com/neybar/dotfiles/tarball/master | tar -xzv --strip-components 1 --exclude={README.md,Makefile,LICENSE-MIT.txt}
 ```
 
 To update later on, just run that command again. (`make` won't work for the git-free install very well)
 
 ### Specify the `$PATH`
+
+*TODO* update for zsh.  Short version is ignore the below, and drop `path.zsh` in 
 
 If `~/.path` exists, it will be sourced along with the other files, before any feature testing (such as [detecting which version of `ls` is being used](https://github.com/neybar/dotfiles/blob/aff769fd75225d8f2e481185a71d5e05b76002dc/.aliases#L21-26)) takes place.
 
