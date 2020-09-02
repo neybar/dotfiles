@@ -15,7 +15,7 @@ sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/too
 You can clone the repository wherever you want. (I like to keep it in `~/Projects/dotfiles`, with `~/dotfiles` as a symlink.) The Makefile will pull in the latest version and copy the files to your home folder.
 
 ```sh
-git clone https://github.com/neybar/dotfiles.git && cd dotfiles && make install
+git clone https://github.com/neybar/dotfiles.git && cd dotfiles && git submodule update --init --recursive && make install
 ```
 
 To update, `cd` into your local `dotfiles` repository and then:

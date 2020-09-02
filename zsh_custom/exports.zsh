@@ -9,6 +9,8 @@ export PAGER=~/.vim/plugged/vimpager/vimpager
 alias less=$PAGER
 alias zless=$PAGER
 
+export BAT_THEME="Solarized (dark)"
+
 # Larger bash history (allow 32³ entries; default is 500)
 export HISTSIZE=32768
 export SAVEHIST=$HISTSIZE
@@ -34,3 +36,6 @@ export HOMEBREW_CASK_OPTS="--appdir=/Applications"
 
 # Turn off analytics for homebrew
 export HOMEBREW_NO_ANALYTICS=1
+
+# OMZ
+export DISABLE_MAGIC_FUNCTIONS=true
