@@ -1,7 +1,7 @@
 [alias]
 	# View abbreviated SHA, description, and history graph of the latest 20 commits
 	l = log --pretty=oneline -n 20 --graph --abbrev-commit
-    lol = log --graph --oneline --decorate --all
+    lol = log --pretty=format:'%C(auto)%h %ad | %s%d %C(bold blue)[%an]%Creset' --graph --date=short --decorate --all
     # Checkout shortcut
     co = checkout
 	# View the current working tree status using the short format
