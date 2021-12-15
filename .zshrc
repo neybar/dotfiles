@@ -17,7 +17,7 @@ ZSH_CUSTOM="$HOME/Projects/dotfiles/zsh_custom"
 plugins=(
     git
     colored-man-pages
-    osx
+    macox
     vi-mode
     fzf
     z
