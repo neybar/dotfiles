@@ -15,6 +15,7 @@ ZSH_THEME="powerlevel10k/powerlevel10k"
 ZSH_CUSTOM="$HOME/Projects/dotfiles/zsh_custom"
 
 plugins=(
+    sudo
     git
     colored-man-pages
     macos
