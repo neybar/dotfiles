@@ -100,6 +100,13 @@ Plug 'https://github.com/kien/ctrlp.vim'
 
 " NerdTree: File Browser
 Plug 'scrooloose/nerdtree', { 'on': 'NERDTreeToggle' }
+let g:NERDTreeChDirMode=2
+let g:NERDTreeIgnore=['node_modules','\.rbc$', '\~$', '\.pyc$', '\.db$', '\.sqlite$', '__pycache__']
+let g:NERDTreeSortOrder=['^__\.py$', '\/$', '*', '\.swp$', '\.bak$', '\~$']
+let g:NERDTreeShowBookmarks=1
+let g:nerdtree_tabs_focus_on_files=1
+let g:NERDTreeMapOpenInTabSilent = '<RightMouse>'
+let g:NERDTreeWinSize = 50
 nnoremap <leader>N :NERDTreeToggle<CR>
 
 " Gundo: Undo tree visualizer
@@ -193,25 +200,21 @@ Plug 'vim-scripts/vcscommand.vim'
 
 " Language Plugins {{{
 
-" Syntastic: Inline Syntax Checking
-" Plug 'vim-syntastic/syntastic'
-
 " ALE: Asynchronous Lint Engine
-Plug 'w0rp/ale'
+Plug 'dense-analysis/ale'
 let g:airline#extensions#ale#enabled = 1
 
 " Perl: yup
 Plug 'neybar/vim-perl', { 'for': 'perl', 'do': 'make clean carp dancer highlight-all-pragmas moose test-more try-tiny'  }
 
-" IndentGuides: Highlight indent levels
-Plug 'https://github.com/nathanaelkane/vim-indent-guides', { 'for':  'python' }
+" IndentLine: Provides visual indent levels
+" Plug 'Yggdroot/indentLine', { 'for': 'python' }
+Plug 'Yggdroot/indentLine'
+let g:indentLine_enabled = 1
+let g:indentLine_concealcursor = ''
+let g:indentLine_char = '┆'
+let g:indentLine_faster = 1
 " }}}
-
-" Csharp: syntax, indent, etc
-" Plug 'OrangeT/vim-csharp'
-" Plug 'OmniSharp/omnisharp-vim'
-" let g:OmniSharp_server_type = 'roslyn'
-" let g:OmniSharp_timeout = 10
 
 " Go: Go functionality
 Plug 'fatih/vim-go', { 'do': ':GoInstallBinaries' }
@@ -241,9 +244,8 @@ Plug 'martinda/Jenkinsfile-vim-syntax'
 
 " Typescript: Add some typescript syntax and linting
 Plug 'leafgarland/typescript-vim'
-Plug 'Quramy/tsuquyomi/'
-let g:tsuquyomi_disable_quickfix = 1
-let g:syntastic_typescript_checkers = ['tsuquyomi'] " You shouldn't use 'tsc' checker.
+Plug 'HerringtonDarkholme/yats.vim'
+let g:yats_host_keyword = 1
 " }}}
 
 " Color Plugins {{{
