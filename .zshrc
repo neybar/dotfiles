@@ -21,6 +21,7 @@ plugins=(
     macos
     vi-mode
     fzf
+    thefuck
     z
     zsh-syntax-highlighting
 )
