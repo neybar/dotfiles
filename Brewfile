@@ -26,7 +26,6 @@ brew 'bash-completion'
 # Install other useful binaries
 brew 'ack'
 brew 'ansible'
-#brew 'caskroot/cask/java'
 brew 'ctags'
 brew 'curl'
 brew 'diff-so-fancy' # nicer diffs
@@ -60,7 +59,7 @@ brew 'tree'
 brew 'vim'
 brew 'webkit2png'
 brew 'wget'
-brew 'youtube-dl'
+brew 'yt-dlp'
 
 # Casks
 cask 'bettertouchtool'
@@ -76,12 +75,10 @@ cask 'qlcolorcode'    # Quicklook plugin for code colorizing
 cask 'qlimagesize'    # Quicklook plugin for image sizes
 cask 'qlmarkdown'     # Quicklook plugin for mark down
 cask 'quicklook-json' # Quicklook plugin for JSON formatting
-cask 'quicksilver'
 cask 'slack'
 cask 'spotify'
 cask 'steam'
 cask 'scroll-reverser' #allows mouse and trackpad to have separate scroll directions
-cask 'tagger' # MP3 ID3 Tag editor
 cask 'transmission'
 cask 'virtualbox'
 cask 'viscosity' # https://sparklabs.com/viscosity VPN client
