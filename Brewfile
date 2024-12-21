@@ -72,6 +72,7 @@ cask 'firefox'
 cask 'imageoptim'
 cask 'istat-menus'
 cask 'iterm2'
+cask 'keybase'
 cask 'macdown'
 cask 'qlcolorcode'    # Quicklook plugin for code colorizing
 cask 'qlimagesize'    # Quicklook plugin for image sizes
