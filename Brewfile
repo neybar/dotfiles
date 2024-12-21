@@ -61,6 +61,8 @@ brew 'yt-dlp'
 # brew 'webkit2png'
 
 # Casks
+cask '1password'
+cask '1password-cli'
 cask 'bettertouchtool'
 cask 'chrome'
 cask 'dropbox'
