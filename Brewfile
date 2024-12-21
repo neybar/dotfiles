@@ -21,23 +21,27 @@ brew 'gnu-sed'
 # Install other useful binaries
 brew 'ack'
 brew 'ctags'
+brew 'cmake'
 brew 'curl'
 brew 'diff-so-fancy' # nicer diffs
 brew 'exiftool'
 brew 'ffmpeg'
 brew 'fzf'
 brew 'git'
+brew 'go'
 brew 'imagemagick', args: ['with-webp']
 brew 'jhead'
 brew 'jpegoptim'
 brew 'lynx'
 brew 'macvim'
-brew 'node' # This installs `npm` too using the recommended installation method
+brew 'nodejs' # This installs `npm` too using the recommended installation method
 brew 'optipng'
 brew 'p7zip'
 brew 'plenv'
 brew 'perl-build'
 brew 'pigz' # multi-processor gzip
+brew 'python'
+brew 'python-setuptools'
 brew 'readline'
 brew 'rename'
 brew 'ssh-copy-id'
