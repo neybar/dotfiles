@@ -64,6 +64,7 @@ brew 'yt-dlp'
 cask '1password'
 cask '1password-cli'
 cask 'bettertouchtool'
+cask 'betterzip'
 cask 'chrome'
 cask 'dropbox'
 cask 'disk-inventory-x'
@@ -75,6 +76,7 @@ cask 'macdown'
 cask 'qlcolorcode'    # Quicklook plugin for code colorizing
 cask 'qlimagesize'    # Quicklook plugin for image sizes
 cask 'qlmarkdown'     # Quicklook plugin for mark down
+cask 'qlvideo'        # Quicklook plugin for video preview
 cask 'quicklook-json' # Quicklook plugin for JSON formatting
 cask 'slack'
 cask 'steam'
