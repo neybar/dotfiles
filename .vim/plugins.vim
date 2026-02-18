@@ -180,10 +180,6 @@ Plug 'sirver/ultisnips'
 " VimSnippets: Various snippets for lots of languages
 Plug 'honza/vim-snippets'
 
-" YouCompleteMe: Autocompletion
-if v:version >= 704
-    Plug 'Valloric/YouCompleteMe', { 'do': './install.py' }
-end
 " }}}
 
 " Version Control Plugins {{{
@@ -214,10 +210,10 @@ let g:indentLine_enabled = 1
 let g:indentLine_concealcursor = ''
 let g:indentLine_char = '┆'
 let g:indentLine_faster = 1
-" }}}
 
 " Go: Go functionality
 Plug 'fatih/vim-go', { 'do': ':GoInstallBinaries' }
+" }}}
 
 " Syntax Plugins {{{
 
@@ -264,15 +260,9 @@ if &diff
     colorscheme solarized
 endif
 
-" In order to make Supertab, UltiSnips, and YouCompleteMe all work together a
-" few things need to happen.
-" First make YCM compatible with UltiSnips (using supertab) by using C-n
-let g:ycm_key_list_select_completion = ['<C-n>', '<Down>']
-let g:ycm_key_list_previous_completion = ['<C-p>', '<Up>']
-" Then make Supertab's default completion type be C-n (which will fire YCM)
-let g:SuperTabDefaultCompletionType = '<C-n>'
-
-" Finally let UltiSnips use <tab> to complete snippets.
+" UltiSnips has built-in SuperTab support: pressing <Tab> will first try to
+" expand/jump a snippet, then fall back to SuperTab completion automatically.
+let g:SuperTabDefaultCompletionType = '<c-p>'
 let g:UltiSnipsExpandTrigger = "<tab>"
 " Use Ctrl-j and Ctrl-b to navigate between snippet tabstops
 let g:UltiSnipsJumpForwardTrigger = "<c-j>"
