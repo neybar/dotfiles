@@ -39,10 +39,19 @@ To update, `cd` into your local `dotfiles` repository and then:
 ```sh
 make update
 ```
-if you are making local change and just want to copy files into place then:
+
+#### Available Make targets
+
+- **`make diff`** — Preview which files would be changed (quick summary)
+- **`make diff-long`** — Show detailed diffs of all changes before applying them
+- **`make copy`** — Copy dotfiles to home directory without running installers
+- **`make install`** — Run `make copy`, update vim plugins, and configure git
+
+If you're making local changes and just want to copy files into place:
 ```sh
-make install # will copy files and run vim
-make copy    # will only copy
+make diff        # Review changes first
+make diff-long   # See detailed diffs if needed
+make copy        # Apply the changes
 ```
 
 ### Git-free install
@@ -69,7 +78,19 @@ Use `~/.zshrc.local` to add custom commands, aliases, and environment variables 
 
 For machine-specific custom ZSH scripts, place files in `~/Projects/dotfiles/zsh_custom/` with a `.local.zsh` suffix — these are git-ignored and won't be committed.
 
-Git user configuration is set up during `make install` and stored in `~/.gitconfig`.
+#### Machine-specific Git Configuration
+
+During `make install`, you'll be prompted to configure your Git user name and email. This setup also configures Git to include the `.gitconfig` file from your dotfiles repository, allowing you to:
+
+- **Keep custom Git commands and aliases synced** across all your machines
+- **Keep machine-specific settings separate** (user name, email, signing keys, etc.)
+
+Your `~/.gitconfig` contains your local, machine-specific settings. The dotfiles `.gitconfig` is automatically included via Git's `include.path` feature, so your custom aliases and commands are available in every repository.
+
+If you need to update the include path after installation:
+```bash
+git config --global include.path ~/Projects/dotfiles/.gitconfig
+```
 
 If you want to maintain your own customizations long-term, consider [forking this repository](https://github.com/neybar/dotfiles/fork).
 
