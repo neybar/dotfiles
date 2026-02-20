@@ -4,11 +4,27 @@
 
 ### ZSH
 
-I'm in the middle of a switch to ZSH and oh-my-zsh.  The installer isn't updated yet, so run the oh-my-zsh installer by hand for now.
+The dotfiles use ZSH with [oh-my-zsh](https://ohmyzsh.sh/). To get started, install oh-my-zsh:
 
 ```sh
 sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
 ```
+
+#### Machine-specific ZSH Configuration
+
+To keep local changes separate from the tracked dotfiles, use `~/.zshrc.local`. This file is sourced by `.zshrc` before oh-my-zsh loads, so you can:
+
+- **Add machine-specific PATH entries**:
+  ```bash
+  export PATH="$HOME/.local/bin:$PATH"
+  ```
+
+- **Add local plugins without modifying the repo**:
+  ```bash
+  plugins+=(nvm docker kubectl)
+  ```
+
+- **Add custom ZSH functions and aliases** in `~/Projects/dotfiles/zsh_custom/` with a `.local.zsh` suffix (e.g., `functions.local.zsh`) — these are ignored by git and only loaded on your machine.
 
 ### Using Git and the bootstrap script
 
@@ -41,11 +57,7 @@ To update later on, just run that command again. (`make` won't work for the git-
 
 ### Specify the `$PATH`
 
-*TODO* update for zsh.  Short version is ignore the below, and drop `path.zsh` in 
-
-If `~/.path` exists, it will be sourced along with the other files, before any feature testing (such as [detecting which version of `ls` is being used](https://github.com/neybar/dotfiles/blob/aff769fd75225d8f2e481185a71d5e05b76002dc/.aliases#L21-26)) takes place.
-
-Here’s an example `~/.path` file that adds `~/utils` to the `$PATH`:
+Edit `~/.zshrc.local` to add machine-specific PATH entries. Since `.zshrc.local` is sourced before oh-my-zsh loads, you can set PATH variables that affect your shell:
 
 ```bash
 export PATH="$HOME/utils:$PATH"
@@ -53,22 +65,13 @@ export PATH="$HOME/utils:$PATH"
 
 ### Add custom commands without creating a new fork
 
-If `~/.extra` exists, it will be sourced along with the other files. You can use this to add a few custom commands without the need to fork this entire repository, or to add commands you don’t want to commit to a public repository.
+Use `~/.zshrc.local` to add custom commands, aliases, and environment variables without forking the repository. See the examples above in the ZSH section.
 
-My `~/.extra` looks something like this:
+For machine-specific custom ZSH scripts, place files in `~/Projects/dotfiles/zsh_custom/` with a `.local.zsh` suffix — these are git-ignored and won't be committed.
 
-```ini
-# Git credentials
-# Not in the repository, to prevent people from accidentally committing under my name
-GIT_AUTHOR_NAME="Your Name"
-GIT_COMMITTER_NAME="$GIT_AUTHOR_NAME"
-git config --global user.name "$GIT_AUTHOR_NAME"
-GIT_AUTHOR_EMAIL="your@email.com"
-GIT_COMMITTER_EMAIL="$GIT_AUTHOR_EMAIL"
-git config --global user.email "$GIT_AUTHOR_EMAIL"
-```
+Git user configuration is set up during `make install` and stored in `~/.gitconfig`.
 
-You could also use `~/.extra` to override settings, functions and aliases from my dotfiles repository. It’s probably better to [fork this repository](https://github.com/neybar/dotfiles/fork) instead, though.
+If you want to maintain your own customizations long-term, consider [forking this repository](https://github.com/neybar/dotfiles/fork).
 
 ### Sensible OS X defaults
 
