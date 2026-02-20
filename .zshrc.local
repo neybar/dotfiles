@@ -1,0 +1,22 @@
+#
+# ~/.zshrc.local - Machine-specific zsh configuration
+#
+# This file is sourced by .zshrc BEFORE oh-my-zsh is loaded.
+# Use it for overrides that are specific to this machine and
+# should not be committed to the dotfiles repo.
+#
+# This file is not tracked by git.
+#
+
+# --- PATH ---
+# Append or prepend to $PATH for machine-specific tools.
+#
+#   export PATH="/some/local/tool/bin:$PATH"
+#
+
+# --- Plugins ---
+# Add machine-specific oh-my-zsh plugins by appending to the list.
+# The base plugin list is defined in .zshrc; additions here are merged in.
+#
+#   plugins+=(nvm docker kubectl)
+#

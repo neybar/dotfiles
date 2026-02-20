@@ -26,6 +26,11 @@ plugins=(
     zsh-syntax-highlighting
 )
 
+# Machine-specific overrides (not tracked in dotfiles)
+# Changes to $PATH and plugins should go in ~/.zshrc.local
+# This file is sourced before oh-my-zsh, so plugins+=() works here.
+[[ -f ~/.zshrc.local ]] && source ~/.zshrc.local
+
 source $ZSH/oh-my-zsh.sh
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh

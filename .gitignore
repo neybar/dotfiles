@@ -19,3 +19,6 @@ Thumbs.db
 *.swo
 *.vim-template*
 plugged
+
+# Machine-specific zsh config
+zsh_custom/*.local.zsh

@@ -17,7 +17,9 @@ copy:
 		  --exclude "oh-my-zsh" \
 		  --exclude "zsh-custom" \
 		  --exclude "init" \
+		  --exclude ".zshrc" \
 		  -avh --no-perms . ~
+	@ln -sfn $(CURDIR)/.zshrc ~/.zshrc
 
 install: copy
 	# @/bin/zsh ~/.zshrc
