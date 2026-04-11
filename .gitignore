@@ -22,3 +22,8 @@ plugged
 
 # Machine-specific zsh config
 zsh_custom/*.local.zsh
+
+# oh-my-zsh-managed custom plugins/themes (cloned by `make bootstrap-omz`,
+# updated by `omz update`)
+zsh_custom/themes/powerlevel10k/
+zsh_custom/plugins/zsh-syntax-highlighting/
