@@ -1,9 +1,19 @@
 #
 # Makefile to copy dotfiles into place
 #
-.PHONY: fetch copy diff diff-long install update clean unlink
+.PHONY: fetch copy diff diff-long install update clean unlink bootstrap-omz
 
 update: fetch install
+
+# Clone oh-my-zsh custom plugins/themes if they're missing. Once cloned,
+# `omz update` (run by oh-my-zsh on its own schedule) keeps them current.
+bootstrap-omz:
+	@[ -d zsh_custom/themes/powerlevel10k ] || \
+		git clone --depth=1 https://github.com/romkatv/powerlevel10k.git \
+			zsh_custom/themes/powerlevel10k
+	@[ -d zsh_custom/plugins/zsh-syntax-highlighting ] || \
+		git clone --depth=1 https://github.com/zsh-users/zsh-syntax-highlighting.git \
+			zsh_custom/plugins/zsh-syntax-highlighting
 
 fetch:
 	@git pull
@@ -55,7 +65,7 @@ copy:
 	@[ -f ~/.zshrc.local ] || cp $(CURDIR)/.zshrc.local ~/.zshrc.local
 	@ln -sfn $(CURDIR)/.zshrc ~/.zshrc
 
-install: copy
+install: copy bootstrap-omz
 	# @/bin/zsh ~/.zshrc
 	@vim +PlugUpdate +qall
 	@echo "\033[0;33mConfiguring git user info...\033[0m"
