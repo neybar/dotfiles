@@ -31,7 +31,7 @@ To keep local changes separate from the tracked dotfiles, use `~/.zshrc.local`. 
 You can clone the repository wherever you want. (I like to keep it in `~/Projects/dotfiles`, with `~/dotfiles` as a symlink.) The Makefile will pull in the latest version and copy the files to your home folder.
 
 ```sh
-git clone https://github.com/neybar/dotfiles.git && cd dotfiles && git submodule update --init --recursive && make install
+git clone https://github.com/neybar/dotfiles.git && cd dotfiles && make install
 ```
 
 To update, `cd` into your local `dotfiles` repository and then:
@@ -45,7 +45,10 @@ make update
 - **`make diff`** — Preview which files would be changed (quick summary)
 - **`make diff-long`** — Show detailed diffs of all changes before applying them
 - **`make copy`** — Copy dotfiles to home directory without running installers
-- **`make install`** — Run `make copy`, update vim plugins, and configure git
+- **`make install`** — Run `make copy`, clone oh-my-zsh plugins/themes, update vim plugins, and configure git
+- **`make update`** — Pull latest dotfiles and run `make install`, then pull latest oh-my-zsh plugins/themes
+- **`make update-omz`** — Pull latest commits in the powerlevel10k and zsh-syntax-highlighting clones
+- **`make bootstrap-omz`** — Clone oh-my-zsh plugins/themes if missing (run automatically by `make install`)
 
 If you're making local changes and just want to copy files into place:
 ```sh

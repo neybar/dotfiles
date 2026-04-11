@@ -1,19 +1,27 @@
 #
 # Makefile to copy dotfiles into place
 #
-.PHONY: fetch copy diff diff-long install update clean unlink bootstrap-omz
+.PHONY: fetch copy diff diff-long install update clean unlink bootstrap-omz update-omz
 
-update: fetch install
+update: fetch install update-omz
 
-# Clone oh-my-zsh custom plugins/themes if they're missing. Once cloned,
-# `omz update` (run by oh-my-zsh on its own schedule) keeps them current.
+# Clone oh-my-zsh custom plugins/themes if missing, and re-clone any leftover
+# submodule checkouts (identified by .git being a file rather than a directory).
 bootstrap-omz:
+	@for dir in zsh_custom/themes/powerlevel10k zsh_custom/plugins/zsh-syntax-highlighting; do \
+		[ -f "$$dir/.git" ] && echo "$$dir: leftover submodule checkout, re-cloning..." && rm -rf "$$dir" || true; \
+	done
 	@[ -d zsh_custom/themes/powerlevel10k ] || \
 		git clone --depth=1 https://github.com/romkatv/powerlevel10k.git \
 			zsh_custom/themes/powerlevel10k
 	@[ -d zsh_custom/plugins/zsh-syntax-highlighting ] || \
 		git clone --depth=1 https://github.com/zsh-users/zsh-syntax-highlighting.git \
 			zsh_custom/plugins/zsh-syntax-highlighting
+
+# Pull latest commits in the oh-my-zsh-managed clones.
+update-omz:
+	@git -C zsh_custom/themes/powerlevel10k pull --ff-only
+	@git -C zsh_custom/plugins/zsh-syntax-highlighting pull --ff-only
 
 fetch:
 	@git pull
