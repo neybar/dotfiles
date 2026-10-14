@@ -232,6 +232,5 @@ can't run it. Use `test.sh` for those cases, or use `chown -R nobody /etc` /
 - A PR hasn't been opened.
 - The agent instruction snippet (README, "Telling agents about it") hasn't been
   added to `~/.claude/CLAUDE.md` or `AGENTS.md` files on any machine yet.
-- `make check-agent-sudo` doesn't check that the `sudo.conf` line exists.
 - busybox awk ignores invalid regexes (fails open). Not a target platform; it's
   documented.
