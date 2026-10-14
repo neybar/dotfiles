@@ -1,0 +1,32 @@
+#!/bin/sh
+# agent-sudo: run a command with sudo, approved through a prompt that shows
+# the exact command. Meant for tools with no terminal (AI agents, IDEs); in a
+# terminal, plain sudo behaves as usual.
+#
+#   agent-sudo [sudo options] command [args...]
+#
+# Every call asks for approval: -k ignores (and does not refresh) cached sudo
+# credentials, and -A sends the password request to the askpass helper, which
+# works without a terminal or a GUI display.
+
+set -u
+ASKPASS=/usr/local/libexec/agent-sudo/askpass
+
+if [ $# -eq 0 ]; then
+    echo "usage: agent-sudo [sudo options] command [args...]" >&2
+    exit 2
+fi
+if [ ! -x "$ASKPASS" ]; then
+    echo "agent-sudo: $ASKPASS is not installed (make install-agent-sudo in the dotfiles repo)" >&2
+    exit 1
+fi
+
+# Rules are checked here too, so a deny still applies when sudo would not ask
+# for a password (NOPASSWD entries).
+"$ASKPASS" --check -- "$@" >/dev/null || exit 1
+
+# Not exec: askpass reads this process's arguments when it can't read sudo's
+# (macOS doesn't show a setuid process's arguments to other processes).
+SUDO_ASKPASS=$ASKPASS
+export SUDO_ASKPASS
+sudo -k -A "$@"

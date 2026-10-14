@@ -1,0 +1,38 @@
+# agent-sudo rules
+#
+# Format: LEVEL<TAB>EXTENDED-REGEX<TAB>REASON   (fields separated by tabs)
+#   deny  refuse outright; no prompt is shown
+#   warn  allow, but show REASON in the approval dialog
+#
+# Each regex is matched against the raw command line and against a normalized
+# copy with quotes and backslashes removed and ; && || | & ` $( turned into " ; ".
+# (^|[ ;/]) anchors a command name at the start of a word or after a path.
+#
+# Built in (not configurable here): deny recursive rm/chmod/chown/chgrp and
+# find -delete on /, $HOME, and top-level system directories; warn on any
+# other recursive rm.
+
+# --- never allowed ---------------------------------------------------------
+deny	(^|[ ;/])mkfs(\.[a-z0-9]+)?( |$)	creates a filesystem (destroys existing data)
+deny	(^|[ ;/])(wipefs|shred|blkdiscard)( |$)	wipes a device or file contents
+deny	(^|[ ;/])dd .*of=/dev/(sd|hd|vd|xvd|nvme|mmcblk|disk|rdisk|md|mapper)	writes raw data onto a disk device
+deny	>+ *\/dev\/(sd|hd|vd|xvd|nvme|mmcblk|disk|rdisk|md|mapper)	redirects output onto a disk device
+deny	:\(\) *\{[^}]*\| *:	fork bomb
+deny	(^|[ ;/])diskutil +(erase|zeroDisk|randomDisk|secureErase|partitionDisk|reformat)	erases a disk
+deny	(^|[ ;/])csrutil +disable	disables macOS System Integrity Protection
+
+# --- allowed with a warning ------------------------------------------------
+warn	(^|[ ;/])(sh|bash|zsh|dash|ksh|fish|csh|tcsh)( |$)	runs a shell: read the whole script in the command
+warn	(^|[ ;/])(su|doas|pkexec)( |$)	switches user inside the root command
+warn	(curl|wget)[^;|]*\| *(sudo +)?(ba|z|da)?sh( |$)	pipes a download straight into a shell
+warn	/etc/(sudoers|passwd|shadow|group|gshadow|pam\.d|ssh/sshd_config)	touches login, privilege or SSH configuration
+warn	(^|[ ;/])(visudo|passwd|chpasswd|usermod|userdel|useradd|groupmod|groupdel|dscl)( |$)	changes user accounts or passwords
+warn	(^|[ ;/])(reboot|shutdown|halt|poweroff)( |$)	restarts or powers off the machine
+warn	(^|[ ;/])(init|telinit) +[06]( |$)	restarts or powers off the machine
+warn	(^|[ ;/])(iptables|ip6tables|nft|pfctl)( |$)	changes firewall rules
+warn	(^|[ ;/])ufw +(disable|reset|delete)	weakens the firewall
+warn	(^|[ ;/])systemctl +(stop|disable|mask|kill) +[^ ;]*ssh	can cut off SSH access
+warn	(^|[ ;/])(apt|apt-get|aptitude|dpkg|dnf|yum|rpm|zypper|pacman|brew) .*(remove|purge|autoremove|uninstall|erase)	removes packages
+warn	(^|[ ;/])chmod .*(777|a\+w|o\+w)	makes files world-writable
+warn	(^|[ ;/])(fdisk|sfdisk|parted|gdisk|sgdisk)( |$)	partition table tool
+warn	(^|[ ;/])dd( |$)	raw block copy

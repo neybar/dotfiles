@@ -1,0 +1,500 @@
+#!/bin/sh
+# agent-sudo askpass helper.
+#
+# sudo runs this (as the invoking user) to collect a password when it has no
+# terminal: via agent-sudo / "sudo -A", or via "Path askpass" in sudo.conf.
+# It shows the exact command sudo was asked to run, refuses commands that the
+# rules mark as never allowed, and only then asks for the password.
+#
+# Usage:
+#   askpass PROMPT                     called by sudo; prints the password
+#   askpass --check [--rules FILE] [--cwd DIR] [--] SUDO_ARGS...
+#                                      analyze a sudo command line; exit 1 if denied
+#   askpass --tmux-prompt DIR          internal: runs inside a tmux popup
+#
+# Must be installed root-owned (make install-agent-sudo). Anything writable by
+# your user could be edited to record the password.
+#
+# Fails closed: if the command can't be read or analyzed, it is refused.
+
+set -u
+set -f # never glob-expand command arguments
+PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin
+export PATH
+unset IFS # default splitting; "$*" joins with spaces
+
+SELF=/usr/local/libexec/agent-sudo/askpass
+WRAPPER=/usr/local/bin/agent-sudo
+RULES_FILE=/usr/local/libexec/agent-sudo/rules
+TIMEOUT=120
+TITLE="sudo authorization"
+CANCEL_MARK=AGENT_SUDO_CANCELLED
+NL='
+'
+TAB=$(printf '\t')
+SOH=$(printf '\001')
+
+die() { printf 'agent-sudo: %s\n' "$*" >&2; exit 1; }
+log() {
+    command -v logger >/dev/null 2>&1 &&
+        logger -t agent-sudo -- "$(printf '%.2000s' "$*")"
+    return 0
+}
+
+# Replace control characters (except tab and newline) so a command can't
+# rewrite or hide parts of the prompt.
+sanitize() { printf '%s' "$1" | LC_ALL=C tr '\001-\010\013-\037\177' '?'; }
+
+# Quote one argument the way a shell would need it.
+shquote() {
+    case $1 in
+        '') printf "''" ;;
+        *[!A-Za-z0-9_./=:@%+,-]*) printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")" ;;
+        *) printf '%s' "$1" ;;
+    esac
+}
+
+display_cmd() {
+    d=
+    for a in "$@"; do d="$d${d:+ }$(shquote "$a")"; done
+    printf '%s' "$d"
+}
+
+# Record the value of a sudo option that matters for the prompt or analysis.
+optval() {
+    case $1 in
+        u | -u | --user) RUNAS=$2 ;;
+        D | -D | --chdir) CWD=$2 ;;
+    esac
+}
+
+# Parse sudo's own options from "$@". Sets SKIP (number of args to drop before
+# the command), RUNAS, MODE (letters: s=shell, i=login shell, e=edit), and CWD
+# when -D/--chdir is given.
+parse_sudo_opts() {
+    SKIP=0 RUNAS=root
+    while [ $# -gt 0 ]; do
+        a=$1 need=
+        case $a in
+            --) SKIP=$((SKIP + 1)); return ;;
+            --*=*) optval "${a%%=*}" "${a#*=}" ;;
+            --user | --other-user | --group | --host | --prompt | --close-from | --chdir | --chroot | --role | --type | --command-timeout | --auth-type | --login-class)
+                need=$a ;;
+            --shell) MODE="${MODE}s" ;;
+            --login) MODE="${MODE}i" ;;
+            --edit) MODE="${MODE}e" ;;
+            --*) ;;
+            -?*)
+                f=${a#-}
+                while [ -n "$f" ]; do
+                    c=${f%"${f#?}"} f=${f#?}
+                    case $c in
+                        [aCcDgpRrTtUu])
+                            if [ -n "$f" ]; then optval "$c" "$f"; else need=-$c; fi
+                            break ;;
+                        h) break ;; # -hHOST (attached only); bare -h is help
+                        [sie]) MODE="$MODE$c" ;;
+                    esac
+                done ;;
+            *) return ;;
+        esac
+        SKIP=$((SKIP + 1)); shift
+        if [ -n "$need" ] && [ $# -gt 0 ]; then
+            optval "$need" "$1"
+            SKIP=$((SKIP + 1)); shift
+        fi
+    done
+}
+
+# Built-in checks plus the rules file. The command arrives on stdin; AS_HOME,
+# AS_CWD, AS_RULES come from the environment. Prints "deny<TAB>reason" and
+# "warn<TAB>reason" lines.
+AWK_PROG='
+function base(p) { sub(/.*\//, "", p); return p }
+function collapse(p,   n, a, i, k, st, out) {
+    n = split(p, a, "/"); k = 0
+    for (i = 1; i <= n; i++) {
+        if (a[i] == "" || a[i] == ".") continue
+        if (a[i] == "..") { if (k > 0) k--; continue }
+        st[++k] = a[i]
+    }
+    out = ""
+    for (i = 1; i <= k; i++) out = out "/" st[i]
+    return out == "" ? "/" : out
+}
+function canon(p) {
+    if (p == "~" || substr(p, 1, 2) == "~/") p = home substr(p, 2)
+    else if (p ~ /^~[^\/]+\/?(\*|\.\*)?$/) return "~user"
+    if (substr(p, 1, 1) != "/") {
+        if (cwd == "") return "?relative" # unknown cwd: treat as protected
+        p = cwd "/" p
+    }
+    while (length(p) > 1 && p ~ /\/(\*|\.\*|\.)?$/) sub(/\/(\*|\.\*|\.)?$/, "", p)
+    return collapse(p)
+}
+function protected(p,   c) {
+    c = canon(p)
+    return (c in P) || c ~ /^\/mnt\/[a-z]$/
+}
+function emit(level, msg) {
+    if ((level SUBSEP msg) in seen) return
+    seen[level, msg] = 1
+    print level "\t" msg
+}
+function check_segment(   x, j, w, tok, rec, endopts, hits, tgts, del) {
+    for (x = 1; x <= m; x++) {
+        w = base(seg[x])
+        if (w == "rm" || w == "chmod" || w == "chown" || w == "chgrp") {
+            rec = 0; endopts = 0; hits = ""; tgts = ""
+            for (j = x + 1; j <= m; j++) {
+                tok = seg[j]
+                if (!endopts && tok == "--") { endopts = 1; continue }
+                if (!endopts && tok ~ /^-/) {
+                    if (tok ~ /^--no-pres/) emit("deny", w " --no-preserve-root")
+                    if (tok ~ /^--rec/ || (w == "rm" && tok ~ /^-[^-]*[rR]/) || (w != "rm" && tok ~ /^-[^-]*R/))
+                        rec = 1
+                    continue
+                }
+                if (protected(tok)) hits = hits " " tok
+                else tgts = tgts " " tok
+            }
+            if (rec && hits != "") emit("deny", "recursive " w " on a protected path:" hits)
+            else if (rec && w == "rm") emit("warn", "recursive delete:" tgts)
+        }
+        if (w == "find") {
+            del = 0; hits = ""
+            for (j = x + 1; j <= m; j++) {
+                if (seg[j] == "-delete") del = 1
+                if (seg[j] ~ /^-(exec|execdir|ok|okdir)$/ && j < m && base(seg[j + 1]) == "rm") del = 1
+            }
+            j = x + 1
+            while (j <= m && (seg[j] ~ /^-([HLP]|O[0-9]*)$/ || seg[j] == "-D")) j += (seg[j] == "-D") ? 2 : 1
+            for (; j <= m && seg[j] !~ /^[-!]/; j++)
+                if (protected(seg[j])) hits = hits " " seg[j]
+            if (del && hits != "") emit("deny", "find deleting under a protected path:" hits)
+            else if (del) emit("warn", "find deletes files")
+        }
+    }
+}
+BEGIN {
+    raw = ""; first = 1
+    while ((getline l) > 0) { raw = first ? l : raw "\n" l; first = 0 }
+    home = ENVIRON["AS_HOME"]; cwd = ENVIRON["AS_CWD"]; rules = ENVIRON["AS_RULES"]
+    n = split("/ /bin /boot /dev /etc /home /lib /lib32 /lib64 /libx32 /media /mnt /opt /proc /root /run /sbin /snap /srv /sys /tmp /usr /usr/bin /usr/lib /usr/local /usr/sbin /usr/share /var /var/lib /var/log /var/root /Applications /Library /System /Users /Volumes /cores /private /private/etc /private/var ~user ?relative", a, " ")
+    for (i = 1; i <= n; i++) P[a[i]] = 1
+    if (home != "") P[canon(home)] = 1
+
+    # Normalized copy: drop quoting, split on shell command separators.
+    s = raw
+    gsub(/\$\{HOME\}|\$HOME/, home, s)
+    gsub(/\\/, "", s)
+    gsub(/"/, "", s)
+    gsub(sq, "", s)
+    gsub(/\$\(|`|&&|\|\||[;&|\n]/, " ; ", s)
+    gsub(/[(){}\t]/, " ", s)
+    norm = s
+
+    r = -1; lineno = 0
+    while (rules != "" && (r = (getline line < rules)) > 0) {
+        lineno++
+        if (line ~ /^[ \t]*(#|$)/) continue
+        nf = split(line, f, /\t+/)
+        if (nf < 2 || (f[1] != "deny" && f[1] != "warn")) {
+            emit("deny", "malformed line " lineno " in " rules)
+            continue
+        }
+        if (raw ~ f[2] || norm ~ f[2]) emit(f[1], nf >= 3 ? f[3] : f[2])
+    }
+    if (r < 0) emit("warn", "rules file " rules " is missing; only built-in checks ran")
+
+    m = 0
+    k = split(norm, t, / +/)
+    for (i = 1; i <= k; i++) {
+        if (t[i] == "") continue
+        if (t[i] == ";") { check_segment(); m = 0; continue }
+        seg[++m] = t[i]
+    }
+    check_segment()
+}'
+
+# Analyze the command in "$@" (sudo options already removed). Sets DENIES and
+# WARNS to newline-separated reasons. Uses MODE, CWD, RULES_FILE.
+analyze() {
+    # The command goes through stdin: an environment variable is capped at
+    # 128 KB on Linux, and a failed awk must not mean "no findings".
+    out=$(printf '%s' "$*" | AS_HOME="${HOME:-}" AS_CWD="$CWD" AS_RULES="$RULES_FILE" \
+        awk -v sq="'" "$AWK_PROG")
+    st=$?
+    [ "$st" -eq 0 ] || out="$out${NL}deny${TAB}rule analysis failed (awk exit $st)"
+    case $MODE in
+        *[si]*) out="$out${NL}warn${TAB}opens a root shell; commands run inside it are not shown here" ;;
+    esac
+    case $MODE in
+        *e*) out="$out${NL}warn${TAB}sudoedit: edits the listed files as root" ;;
+    esac
+    [ $# -eq 0 ] && [ -z "$MODE" ] && out="$out${NL}warn${TAB}no command (sudo -v / -l): only refreshes or lists credentials"
+    DENIES=$(printf '%s\n' "$out" | sed -n "s/^deny${TAB}//p")
+    WARNS=$(printf '%s\n' "$out" | sed -n "s/^warn${TAB}//p")
+}
+
+check_mode() {
+    CWD=$(pwd) MODE=
+    while [ $# -gt 0 ]; do
+        case $1 in
+            --rules) RULES_FILE=$2; shift 2 ;;
+            --cwd) CWD=$2; shift 2 ;;
+            --) shift; break ;;
+            *) break ;;
+        esac
+    done
+    parse_sudo_opts "$@"
+    shift "$SKIP"
+    analyze "$@"
+    [ -n "$WARNS" ] && printf '%s\n' "$WARNS" | sed 's/^/warn: /'
+    if [ -n "$DENIES" ]; then
+        printf '%s\n' "$DENIES" | sed 's/^/agent-sudo: denied: /' >&2
+        exit 1
+    fi
+    exit 0
+}
+
+# ---- prompting --------------------------------------------------------------
+# Each prompt prints the password and returns 0, returns 1 when the user
+# denied or it timed out, or 2 when it could not be shown (try the next one).
+
+prompt_gui() {
+    if [ "$(uname -s)" = Darwin ]; then
+        out=$(osascript \
+            -e 'on run argv' \
+            -e 'try' \
+            -e 'set r to display dialog (item 1 of argv) with title (item 2 of argv) default answer "" with hidden answer buttons {"Deny", "Approve"} default button "Approve" cancel button "Deny" with icon caution giving up after ((item 3 of argv) as integer)' \
+            -e 'on error number -128' \
+            -e 'return item 4 of argv' \
+            -e 'end try' \
+            -e 'if gave up of r then return item 4 of argv' \
+            -e 'return text returned of r' \
+            -e 'end run' \
+            "$1" "$TITLE" "$TIMEOUT" "$CANCEL_MARK" 2>/dev/null) || return 2
+        [ "$out" = "$CANCEL_MARK" ] && return 1
+        printf '%s\n' "$out"
+        return 0
+    fi
+    if command -v zenity >/dev/null 2>&1; then
+        # zenity unescapes backslashes and treats "_" as a mnemonic marker.
+        out=$(zenity --entry --hide-text --width=760 --title="$TITLE" --timeout="$TIMEOUT" \
+            --ok-label=Approve --cancel-label=Deny \
+            --text="$(printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/_/__/g')" 2>/dev/null)
+        case $? in
+            0) printf '%s\n' "$out"; return 0 ;;
+            1 | 5) return 1 ;; # Deny / timeout
+            *) return 2 ;;
+        esac
+    fi
+    if command -v kdialog >/dev/null 2>&1; then
+        out=$(kdialog --title "$TITLE" --password "$1" 2>/dev/null)
+        case $? in
+            0) printf '%s\n' "$out"; return 0 ;;
+            1) return 1 ;;
+            *) return 2 ;;
+        esac
+    fi
+    for b in /usr/bin/ssh-askpass /usr/lib/ssh/x11-ssh-askpass /usr/lib/openssh/gnome-ssh-askpass /usr/bin/ksshaskpass; do
+        [ -x "$b" ] && { "$b" "$1"; return; }
+    done
+    return 2
+}
+
+prompt_tmux() {
+    command -v tmux >/dev/null 2>&1 || return 2
+    dir=$(mktemp -d /tmp/agent-sudo.XXXXXX) || return 2
+    case $dir in *[!A-Za-z0-9._/-]*) rm -rf "$dir"; return 2 ;; esac
+    trap 'rm -rf "$dir"' EXIT
+    printf '%s\n' "$1" >"$dir/msg"
+    mkfifo -m 600 "$dir/reply" || return 2
+    # Hold the fifo open read-write so early writes are buffered, and have
+    # writers open it read-write so they never block once nobody is reading.
+    exec 3<>"$dir/reply"
+    # Background jobs must not keep our stdout (the $(...) pipe) open.
+    (
+        sleep "$TIMEOUT" &
+        s=$!
+        trap 'kill "$s" 2>/dev/null; exit 0' TERM
+        wait "$s"
+        printf 'timeout\n' 1<>"$dir/reply"
+    ) >/dev/null 2>&1 </dev/null &
+    watchdog=$!
+    (
+        tmux display-popup ${TMUX_PANE:+-t "$TMUX_PANE"} -E -w 90% -h 75% \
+            "sh $SELF --tmux-prompt $dir"
+        [ -e "$dir/started" ] || printf 'error\n' 1<>"$dir/reply"
+    ) >/dev/null 2>&1 </dev/null &
+    IFS= read -r reply <&3
+    exec 3<&-
+    kill "$watchdog" 2>/dev/null
+    case $reply in
+        ok:*) printf '%s\n' "${reply#ok:}"; return 0 ;;
+        error) return 2 ;;
+        timeout)
+            tmux display-popup -C ${TMUX_PANE:+-t "$TMUX_PANE"} >/dev/null 2>&1
+            return 1 ;;
+        *) return 1 ;;
+    esac
+}
+
+tmux_prompt() {
+    dir=$1 reply=cancel
+    : >"$dir/started"
+    finish() { stty echo 2>/dev/null; printf '%s\n' "$reply" 1<>"$dir/reply"; }
+    trap finish EXIT
+    trap 'exit 0' INT TERM HUP
+    cat "$dir/msg"
+    printf '\nPassword (Enter to approve, empty or Ctrl-C to deny, %ss timeout): ' "$TIMEOUT"
+    stty -echo 2>/dev/null
+    IFS= read -r pw || pw=
+    stty echo 2>/dev/null
+    echo
+    [ -n "$pw" ] && reply="ok:$pw"
+    exit 0
+}
+
+# Try the prompts suited to where we are. Over SSH, tmux comes first and the
+# macOS dialog is skipped, so nothing opens on a screen you can't see.
+get_password() {
+    method=${AGENT_SUDO_PROMPT:-}
+    if [ -z "$method" ]; then
+        if [ -n "${SSH_CONNECTION:-}" ]; then method="tmux gui"; else method="gui tmux"; fi
+    fi
+    for m in $method; do
+        case $m in
+            gui)
+                if [ "$(uname -s)" = Darwin ]; then
+                    [ -z "${SSH_CONNECTION:-}" ] || [ -n "${AGENT_SUDO_PROMPT:-}" ] || continue
+                else
+                    [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ] || continue
+                fi
+                prompt_gui "$1"; rc=$? ;;
+            tmux)
+                [ -n "${TMUX:-}" ] || continue
+                prompt_tmux "$1"; rc=$? ;;
+            *) continue ;;
+        esac
+        [ "$rc" -eq 2 ] && continue
+        return "$rc"
+    done
+    return 3
+}
+
+# ---- main: called by sudo ---------------------------------------------------
+
+prompt_mode() {
+    sudo_pid=$PPID
+    sudo_comm=$(ps -o comm= -p "$sudo_pid" 2>/dev/null)
+    sudo_comm=${sudo_comm##*/}
+    case $sudo_comm in
+        sudo | sudoedit) ;;
+        *) die "refusing: parent process is '${sudo_comm:-unknown}', not sudo" ;;
+    esac
+    parent=$(ps -o ppid= -p "$sudo_pid" 2>/dev/null | tr -d ' ')
+
+    # sudo's argv, exactly, from /proc on Linux. Newlines inside an argument
+    # travel as \001 so they don't split it; the end marker keeps trailing
+    # empty arguments.
+    set --
+    if [ -r "/proc/$sudo_pid/cmdline" ]; then
+        end="agent-sudo-end-$$"
+        while IFS= read -r a; do
+            [ "$a" = "$end" ] && break
+            case $a in *"$SOH"*) a=$(printf '%s' "$a" | tr '\001' '\n') ;; esac
+            set -- "$@" "$a"
+        done <<EOF
+$(tr '\n\0' '\001\n' <"/proc/$sudo_pid/cmdline"; echo "$end")
+EOF
+    fi
+    if [ $# -eq 0 ]; then
+        # No /proc (macOS) or it's hidden: ps joins args with spaces, and may
+        # not show a setuid process's args at all. agent-sudo runs sudo as a
+        # child, so its own argv (same user) carries the same arguments.
+        args=$(ps -ww -o args= -p "$sudo_pid" 2>/dev/null)
+        case $args in '' | '('* | '['* | sudo | */sudo) args= ;; esac
+        if [ -z "$args" ] && [ -n "$parent" ]; then
+            pargs=$(ps -ww -o args= -p "$parent" 2>/dev/null)
+            case $pargs in
+                *" $WRAPPER "*) args="sudo -k -A ${pargs#* "$WRAPPER" }" ;;
+            esac
+        fi
+        [ -n "$args" ] || die "refusing: cannot read the command sudo was asked to run"
+        set -- $args
+    fi
+    MODE=
+    case ${1##*/} in sudoedit) MODE=e ;; esac
+    shift
+
+    # sudo is setuid, so its own cwd is usually unreadable; its parent's matches.
+    CWD=
+    for p in "$sudo_pid" "$parent"; do
+        CWD=$(readlink "/proc/$p/cwd" 2>/dev/null) ||
+            CWD=$(lsof -a -p "$p" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p')
+        # lsof reports errors in the name field, e.g. "/proc/1/cwd (readlink: ...)".
+        case $CWD in /*) [ -d "$CWD" ] || CWD= ;; *) CWD= ;; esac
+        [ -n "$CWD" ] && break
+    done
+    parse_sudo_opts "$@" # may set CWD from -D
+    shift "$SKIP"
+
+    chain= p=$parent i=0
+    while [ -n "$p" ] && [ "$p" -gt 1 ] 2>/dev/null && [ $i -lt 6 ]; do
+        c=$(ps -o comm= -p "$p" 2>/dev/null)
+        chain="$chain${chain:+ <- }${c##*/}"
+        p=$(ps -o ppid= -p "$p" 2>/dev/null | tr -d ' ')
+        i=$((i + 1))
+    done
+
+    cmd=$(display_cmd "$@")
+    analyze "$@"
+    logcmd=$(sanitize "$cmd" | tr '\n' ' ')
+
+    if [ -n "$DENIES" ]; then
+        log "denied by rules: $logcmd ($(printf '%s' "$DENIES" | tr '\n' ';'))"
+        printf '%s\n' "$DENIES" | sed 's/^/agent-sudo: denied: /' >&2
+        exit 1
+    fi
+
+    text="A process without a terminal is asking to run a command as $RUNAS.
+
+Command:
+${cmd:-(none)}
+
+Directory:     ${CWD:-unknown}
+Requested by:  ${chain:-unknown}"
+    if [ -n "$WARNS" ]; then
+        text="$text
+
+WARNINGS:
+$(printf '%s\n' "$WARNS" | sed 's/^/  * /')"
+    fi
+    text="$text
+
+Enter your password to approve. Deny or close to refuse."
+    text=$(sanitize "$text")
+
+    pw=$(get_password "$text")
+    rc=$?
+    case $rc in
+        0)
+            [ -n "$pw" ] || { log "cancelled: $logcmd"; die "denied: no password entered"; }
+            log "approved: $logcmd (from: $chain)"
+            printf '%s\n' "$pw" ;;
+        3)
+            log "no prompt available: $logcmd"
+            die "no way to ask for approval here: needs a display plus a dialog program (zenity, kdialog or ssh-askpass; built in on macOS), or a tmux session. Run it yourself: sudo $(sanitize "$cmd")" ;;
+        *)
+            log "cancelled: $logcmd"
+            die "denied by user" ;;
+    esac
+}
+
+case ${1-} in
+    --check) shift; check_mode "$@" ;;
+    --tmux-prompt) tmux_prompt "$2" ;;
+    *) prompt_mode ;;
+esac

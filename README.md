@@ -50,6 +50,9 @@ make update
 - **`make update-omz`** — Pull latest commits in the powerlevel10k and zsh-syntax-highlighting clones
 - **`make bootstrap-omz`** — Clone oh-my-zsh plugins/themes if missing (run automatically by `make install`)
 
+- **`make install-agent-sudo`** — Install [agent-sudo](agent-sudo/README.md) (root-owned, needs sudo): lets AI agents run sudo commands after you approve each one in a prompt that shows the exact command
+- **`make test-agent-sudo`** — Run the agent-sudo rule tests (no root needed)
+
 If you're making local changes and just want to copy files into place:
 ```sh
 make diff        # Review changes first
