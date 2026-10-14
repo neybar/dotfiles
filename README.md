@@ -45,12 +45,12 @@ make update
 - **`make diff`** — Preview which files would be changed (quick summary)
 - **`make diff-long`** — Show detailed diffs of all changes before applying them
 - **`make copy`** — Copy dotfiles to home directory without running installers
-- **`make install`** — Run `make copy`, clone oh-my-zsh plugins/themes, update vim plugins, and configure git
+- **`make install`** — Run `make copy`, clone oh-my-zsh plugins/themes, install/update agent-sudo, update vim plugins, and configure git
 - **`make update`** — Pull latest dotfiles and run `make install`, then pull latest oh-my-zsh plugins/themes
 - **`make update-omz`** — Pull latest commits in the powerlevel10k and zsh-syntax-highlighting clones
 - **`make bootstrap-omz`** — Clone oh-my-zsh plugins/themes if missing (run automatically by `make install`)
 
-- **`make install-agent-sudo`** — Install [agent-sudo](agent-sudo/README.md) (root-owned, needs sudo): lets AI agents run sudo commands after you approve each one in a prompt that shows the exact command
+- **`make install-agent-sudo`** — Install or reinstall [agent-sudo](agent-sudo/README.md) now. `make install`/`make update` already do this when it's missing or out of date (asking for your sudo password only then; skip with `SKIP_AGENT_SUDO=1`). agent-sudo lets AI agents run sudo commands after you approve each one in a prompt that shows the exact command.
 - **`make test-agent-sudo`** — Run the agent-sudo rule tests (no root needed)
 
 If you're making local changes and just want to copy files into place:

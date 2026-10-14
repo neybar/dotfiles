@@ -8,10 +8,38 @@ password, and rules refuse some commands outright (`rm -rf /`, `mkfs`, ...).
 Terminal sudo is unchanged: in a real terminal, sudo still asks for the password
 as text.
 
+## Who can ask
+
+A prompt only appears for requests that trace back to **your own terminal**:
+some ancestor of the sudo process has a controlling terminal owned by you.
+That covers agent TUIs you started (Claude Code, Cursor CLI, Codex, ...),
+`!` commands inside them, tmux panes, and scripts you ran. Cron jobs, services,
+and programs launched from the desktop have no such terminal; their requests
+are refused without showing anything, and logged.
+
+## Agents just type `sudo`
+
+The dotfiles install a shim at `~/bin/sudo` (from `bin/sudo`; `~/bin` is first
+in PATH). It hands off to the real `/usr/bin/sudo` in every case except one:
+no terminal here, but the request traces back to your terminal. Then it runs
+`agent-sudo` instead. So agents need no instructions, and everything else
+(cron, services, your own terminal) gets plain sudo exactly as before.
+
+`agent-sudo` itself always calls the system sudo by full path, so it never
+loops back into the shim.
+
 ## Install
 
+`make install` and `make update` handle it. When the installed copy is missing
+or differs from the repo, they run the tests and install it, asking for your
+sudo password once. When it's current, they print `agent-sudo: up to date` and
+don't ask for anything. If the install fails or you cancel it, the rest of
+`make install` still runs.
+
 ```sh
-make install-agent-sudo   # runs the tests, then installs with sudo
+make install-agent-sudo                # install/reinstall now (runs tests first)
+sh agent-sudo/install.sh --check       # is the installed copy current?
+SKIP_AGENT_SUDO=1 make update          # skip it (e.g. no sudo on this machine)
 ```
 
 This installs, owned by root:
@@ -23,17 +51,16 @@ This installs, owned by root:
 | `/usr/local/libexec/agent-sudo/rules` | deny/warn rules |
 
 It also adds `Path askpass /usr/local/libexec/agent-sudo/askpass` to
-`/etc/sudo.conf`, unless that file already names a different helper.
+`/etc/sudo.conf`, unless that file already names a different helper. On a Linux
+desktop or WSLg (a display is present) with apt, it installs `zenity` for the
+dialog, or `kdialog` if the desktop is KDE, unless one of them is already
+there. Nothing GNOME is ever installed on KDE: Plasma ships kdialog. macOS uses
+its built-in dialog, and servers use a tmux popup or a second terminal, so
+neither needs one.
 
 The files are root-owned on purpose. If the helper were writable by your user,
 any process running as you could change it to record your password or show a
 different command from the one sudo runs.
-
-`make update` reports when the installed copy is missing or older than the repo.
-Re-run `make install-agent-sudo` to update it.
-
-Desktop Linux and WSLg need a dialog program: `sudo apt install zenity`
-(`kdialog` and `ssh-askpass` also work). macOS uses its built-in dialog.
 
 ## Usage
 
@@ -52,27 +79,41 @@ agent-sudo -u postgres psql -c 'select 1'
 The rules are also checked before sudo runs, so a deny still applies to commands
 your sudoers file lets run without a password.
 
-Plain `sudo` with no terminal also reaches the helper through `sudo.conf`, but
-only when a GUI display is present (a sudo rule). It also caches credentials:
-after one approval, later `sudo` calls from the same parent process skip the
-prompt and the rules until sudo's credential timeout expires. Agents should use `agent-sudo`.
+Plain `/usr/bin/sudo` with no terminal (bypassing the shim) also reaches the
+helper through `sudo.conf`, but only when a GUI display is present (a sudo
+rule), and it caches credentials: after one approval, later calls from the same
+parent process skip the prompt and the rules until sudo's credential timeout
+expires. The shim and `agent-sudo` don't have either limitation.
 
 ## Where the prompt appears
 
 | Situation | Prompt |
 |---|---|
 | macOS, local | native dialog (`osascript`) |
-| Linux desktop / WSLg | zenity, kdialog, or ssh-askpass |
-| SSH session inside tmux | tmux popup in your attached client |
-| SSH with X forwarding, no tmux | dialog on your local X display |
-| SSH, no tmux, no X | refused, with the command to run yourself |
+| Linux, KDE | kdialog: one box shows the command, a second takes the password |
+| Linux, other desktops / WSLg | zenity (one box) |
+| SSH, agent inside tmux | tmux popup over the agent's pane |
+| SSH, agent not in tmux, you have a tmux session attached | tmux popup in your attached session |
+| SSH, no tmux, another terminal of yours open | notice in that terminal; run `agent-sudo --approve` there |
+| SSH, none of the above | refused right away, with the command to run yourself |
 
-Over SSH (`SSH_CONNECTION` set), tmux comes first, so a dialog never opens on a
-screen you can't see. On servers, run agents inside tmux. Override the order with
-`AGENT_SUDO_PROMPT="tmux gui"` or `AGENT_SUDO_PROMPT=gui`.
+Over SSH (`SSH_CONNECTION` set), terminal prompts come first, so a dialog never
+opens on a screen you can't see. Override the order with
+`AGENT_SUDO_PROMPT`, e.g. `"tmux terminal"` or `gui`.
+
+kdialog uses two boxes because its password box turns newlines into spaces.
+The message box shows the command exactly. Qt only renders it as HTML if a
+tag appears before the first line break, and the first line is fixed text.
+zenity, on non-KDE desktops, shows the text exactly in a single box.
+
+`agent-sudo --approve` answers the oldest pending request owned by you. It
+shows the same details and asks for the password on that terminal. The notice
+goes to your other login terminals (from `who`), never to the terminal the
+agent is running in.
 
 Every prompt shows the command, run-as user, working directory, the process
-chain that asked (for example `sh <- claude <- zsh <- tmux`), and any warnings.
+chain that asked (for example `agent-sudo <- zsh <- claude`), the terminal it
+traces back to (`claude on /dev/pts/0`), and any warnings.
 It times out after 120 seconds. Decisions (approved, denied, cancelled, but
 never the password) are logged with `logger -t agent-sudo`. On Linux, read them
 with `journalctl -t agent-sudo`; on macOS they go to the unified log.
@@ -112,9 +153,10 @@ without root. Platform testing status and probe scripts: [TESTING.md](TESTING.md
 
 ## Telling agents about it
 
-Add something like this to each agent's global instructions (for example
-`~/.claude/CLAUDE.md`, or `AGENTS.md` for tools that read it):
+Not required: with the shim, agents can use plain `sudo`. Two things are still
+worth telling them (for example in `~/.claude/CLAUDE.md` or `AGENTS.md`):
 
-> To run a command as root, use `agent-sudo <command>` instead of `sudo`. It asks
-> me for approval in a dialog that shows the exact command. If I deny it, don't
-> retry; tell me what you wanted to run and why. Never pipe a password to `sudo -S`.
+> `sudo` here asks me for approval in a prompt that shows the exact command,
+> and can wait up to 2 minutes for me, so give sudo commands a shell timeout of
+> at least 3 minutes. If I deny one, don't retry; tell me what you wanted to
+> run and why. Never pipe a password to `sudo -S`.

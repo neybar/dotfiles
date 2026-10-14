@@ -4,22 +4,28 @@
 # terminal, plain sudo behaves as usual.
 #
 #   agent-sudo [sudo options] command [args...]
+#   agent-sudo --approve     approve a pending request from another terminal
+#                            (when there's no GUI and no tmux client)
 #
 # Every call asks for approval: -k ignores (and does not refresh) cached sudo
 # credentials, and -A sends the password request to the askpass helper, which
 # works without a terminal or a GUI display.
 
 set -u
+# System sudo only: ~/bin/sudo (the shim) would route back here forever.
+PATH=/usr/bin:/bin:/usr/sbin:/sbin
+export PATH
 ASKPASS=/usr/local/libexec/agent-sudo/askpass
 
 if [ $# -eq 0 ]; then
-    echo "usage: agent-sudo [sudo options] command [args...]" >&2
+    echo "usage: agent-sudo [sudo options] command [args...] | agent-sudo --approve" >&2
     exit 2
 fi
 if [ ! -x "$ASKPASS" ]; then
     echo "agent-sudo: $ASKPASS is not installed (make install-agent-sudo in the dotfiles repo)" >&2
     exit 1
 fi
+[ "$1" = --approve ] && exec "$ASKPASS" --approve
 
 # Rules are checked here too, so a deny still applies when sudo would not ask
 # for a password (NOPASSWD entries).

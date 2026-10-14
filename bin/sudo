@@ -1,0 +1,20 @@
+#!/bin/sh
+# sudo shim (dotfiles agent-sudo; see ~/Projects/dotfiles/agent-sudo).
+#
+# Plain sudo, except for one case: no terminal here, but the request traces
+# back to something you started from your own terminal (an agent TUI like
+# Claude Code). That case goes to agent-sudo, which shows you the exact command
+# in an approval prompt. Cron jobs, services and desktop-launched programs have
+# no such terminal and get plain sudo, exactly as before.
+
+REAL=/usr/bin/sudo
+[ -x "$REAL" ] || REAL=/bin/sudo
+AGENT_SUDO=/usr/local/bin/agent-sudo
+ASKPASS=/usr/local/libexec/agent-sudo/askpass
+
+# (subshell: a failed redirection on a builtin would exit this shell)
+if ! (exec </dev/tty) 2>/dev/null && [ -x "$AGENT_SUDO" ] && [ -x "$ASKPASS" ] &&
+    "$ASKPASS" --from-terminal; then
+    exec "$AGENT_SUDO" "$@"
+fi
+exec "$REAL" "$@"

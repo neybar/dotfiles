@@ -10,7 +10,11 @@
 #   askpass PROMPT                     called by sudo; prints the password
 #   askpass --check [--rules FILE] [--cwd DIR] [--] SUDO_ARGS...
 #                                      analyze a sudo command line; exit 1 if denied
-#   askpass --tmux-prompt DIR          internal: runs inside a tmux popup
+#   askpass --from-terminal            exit 0 if an ancestor has a terminal
+#                                      you own (used by the ~/bin/sudo shim)
+#   askpass --approve                  answer a pending request from another
+#                                      terminal (agent-sudo --approve)
+#   askpass --tty-prompt DIR           internal: runs inside a tmux popup
 #
 # Must be installed root-owned (make install-agent-sudo). Anything writable by
 # your user could be edited to record the password.
@@ -258,54 +262,119 @@ check_mode() {
     exit 0
 }
 
+# Succeeds if an ancestor of process $1 has a controlling terminal owned by
+# you: the request traces back to something you started from a terminal (an
+# agent TUI, a script you ran, a tmux pane). Cron jobs, services and
+# desktop-launched programs have none. Sets ORIGIN and CHAIN (ancestry walked).
+from_your_terminal() {
+    ORIGIN= CHAIN=
+    p=$1 i=0
+    while [ -n "$p" ] && [ "$p" -gt 1 ] 2>/dev/null && [ $i -lt 40 ]; do
+        c=$(ps -o comm= -p "$p" 2>/dev/null)
+        c=${c##*/}
+        t=$(ps -o tty= -p "$p" 2>/dev/null | tr -d ' ')
+        CHAIN="$CHAIN${CHAIN:+ <- }$c"
+        case $t in
+            '' | '?' | '??' | -) ;;
+            *)
+                if [ -c "/dev/$t" ] && [ -O "/dev/$t" ]; then
+                    ORIGIN="$c on /dev/$t"
+                    return 0
+                fi ;;
+        esac
+        p=$(ps -o ppid= -p "$p" 2>/dev/null | tr -d ' ')
+        i=$((i + 1))
+    done
+    return 1
+}
+
 # ---- prompting --------------------------------------------------------------
 # Each prompt prints the password and returns 0, returns 1 when the user
 # denied or it timed out, or 2 when it could not be shown (try the next one).
 
-prompt_gui() {
-    if [ "$(uname -s)" = Darwin ]; then
-        out=$(osascript \
-            -e 'on run argv' \
-            -e 'try' \
-            -e 'set r to display dialog (item 1 of argv) with title (item 2 of argv) default answer "" with hidden answer buttons {"Deny", "Approve"} default button "Approve" cancel button "Deny" with icon caution giving up after ((item 3 of argv) as integer)' \
-            -e 'on error number -128' \
-            -e 'return item 4 of argv' \
-            -e 'end try' \
-            -e 'if gave up of r then return item 4 of argv' \
-            -e 'return text returned of r' \
-            -e 'end run' \
-            "$1" "$TITLE" "$TIMEOUT" "$CANCEL_MARK" 2>/dev/null) || return 2
-        [ "$out" = "$CANCEL_MARK" ] && return 1
-        printf '%s\n' "$out"
-        return 0
-    fi
-    if command -v zenity >/dev/null 2>&1; then
-        # zenity unescapes backslashes and treats "_" as a mnemonic marker.
-        out=$(zenity --entry --hide-text --width=760 --title="$TITLE" --timeout="$TIMEOUT" \
-            --ok-label=Approve --cancel-label=Deny \
-            --text="$(printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/_/__/g')" 2>/dev/null)
-        case $? in
-            0) printf '%s\n' "$out"; return 0 ;;
-            1 | 5) return 1 ;; # Deny / timeout
-            *) return 2 ;;
-        esac
-    fi
-    if command -v kdialog >/dev/null 2>&1; then
-        out=$(kdialog --title "$TITLE" --password "$1" 2>/dev/null)
-        case $? in
-            0) printf '%s\n' "$out"; return 0 ;;
-            1) return 1 ;;
-            *) return 2 ;;
-        esac
-    fi
+# Run a dialog with a time limit where the tool has none of its own (exit 124).
+with_timeout() {
+    if command -v timeout >/dev/null 2>&1; then timeout "$TIMEOUT" "$@"; else "$@"; fi
+}
+
+dialog_mac() {
+    [ "$(uname -s)" = Darwin ] || return 2
+    out=$(osascript \
+        -e 'on run argv' \
+        -e 'try' \
+        -e 'set r to display dialog (item 1 of argv) with title (item 2 of argv) default answer "" with hidden answer buttons {"Deny", "Approve"} default button "Approve" cancel button "Deny" with icon caution giving up after ((item 3 of argv) as integer)' \
+        -e 'on error number -128' \
+        -e 'return item 4 of argv' \
+        -e 'end try' \
+        -e 'if gave up of r then return item 4 of argv' \
+        -e 'return text returned of r' \
+        -e 'end run' \
+        "$1" "$TITLE" "$TIMEOUT" "$CANCEL_MARK" 2>/dev/null) || return 2
+    [ "$out" = "$CANCEL_MARK" ] && return 1
+    printf '%s\n' "$out"
+}
+
+dialog_zenity() {
+    command -v zenity >/dev/null 2>&1 || return 2
+    # zenity unescapes backslashes and treats "_" as a mnemonic marker.
+    out=$(zenity --entry --hide-text --width=760 --title="$TITLE" --timeout="$TIMEOUT" \
+        --ok-label=Approve --cancel-label=Deny \
+        --text="$(printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/_/__/g')" 2>/dev/null)
+    case $? in
+        0) printf '%s\n' "$out" ;;
+        1 | 5) return 1 ;; # Deny / timeout
+        *) return 2 ;;
+    esac
+}
+
+# Two steps, because kdialog's password box turns newlines into spaces: a
+# message box shows the command exactly, then a separate box takes the
+# password. kdialog expands \n and \\ escapes, so every backslash is doubled.
+# Qt only renders the message as HTML if a tag appears before its first line
+# break, and the first line is our fixed sentence.
+dialog_kdialog() {
+    command -v kdialog >/dev/null 2>&1 || return 2
+    with_timeout kdialog --title "$TITLE" --warningcontinuecancel \
+        "$(printf '%s' "$1" | sed 's/\\/\\\\/g')" >/dev/null 2>&1
+    case $? in
+        0) ;;
+        1 | 2 | 124) return 1 ;; # Cancel / timeout
+        *) return 2 ;;
+    esac
+    out=$(with_timeout kdialog --title "$TITLE" \
+        --password "Enter your password to approve the command you just reviewed." 2>/dev/null)
+    case $? in
+        0) printf '%s\n' "$out" ;;
+        1 | 124) return 1 ;;
+        *) return 2 ;;
+    esac
+}
+
+dialog_sshaskpass() {
     for b in /usr/bin/ssh-askpass /usr/lib/ssh/x11-ssh-askpass /usr/lib/openssh/gnome-ssh-askpass /usr/bin/ksshaskpass; do
         [ -x "$b" ] && { "$b" "$1"; return; }
     done
     return 2
 }
 
-prompt_tmux() {
-    command -v tmux >/dev/null 2>&1 || return 2
+prompt_gui() {
+    if [ "$(uname -s)" = Darwin ]; then dialog_mac "$1"; return; fi
+    # KDE gets kdialog (ships with Plasma); elsewhere zenity shows text exactly.
+    case ${XDG_CURRENT_DESKTOP:-} in
+        *KDE* | *kde*) order="kdialog zenity sshaskpass" ;;
+        *) order="zenity kdialog sshaskpass" ;;
+    esac
+    for d in $order; do
+        "dialog_$d" "$1"
+        rc=$?
+        [ "$rc" -eq 2 ] || return "$rc"
+    done
+    return 2
+}
+
+# Shared by the tmux and terminal prompts: a private request directory with
+# the message and a fifo for the answer. Sets dir and watchdog.
+new_request() {
     dir=$(mktemp -d /tmp/agent-sudo.XXXXXX) || return 2
     case $dir in *[!A-Za-z0-9._/-]*) rm -rf "$dir"; return 2 ;; esac
     trap 'rm -rf "$dir"' EXIT
@@ -323,32 +392,88 @@ prompt_tmux() {
         printf 'timeout\n' 1<>"$dir/reply"
     ) >/dev/null 2>&1 </dev/null &
     watchdog=$!
-    (
-        tmux display-popup ${TMUX_PANE:+-t "$TMUX_PANE"} -E -w 90% -h 75% \
-            "sh $SELF --tmux-prompt $dir"
-        [ -e "$dir/started" ] || printf 'error\n' 1<>"$dir/reply"
-    ) >/dev/null 2>&1 </dev/null &
+}
+
+# Wait for the answer; sets reply.
+await_reply() {
     IFS= read -r reply <&3
     exec 3<&-
     kill "$watchdog" 2>/dev/null
+}
+
+prompt_tmux() {
+    command -v tmux >/dev/null 2>&1 || return 2
+    # Inside tmux: a popup over the agent's own pane. Otherwise: your most
+    # recently active tmux client on this machine, if any.
+    if [ -n "${TMUX:-}" ]; then
+        target="-t ${TMUX_PANE:-}"
+    else
+        client=$(tmux list-clients -F '#{client_activity} #{client_name}' 2>/dev/null |
+            sort -rn | head -1 | cut -d' ' -f2)
+        [ -n "$client" ] || return 2
+        target="-c $client"
+    fi
+    new_request "$1" || return 2
+    (
+        tmux display-popup $target -E -w 90% -h 75% "sh $SELF --tty-prompt $dir"
+        [ -e "$dir/started" ] || printf 'error\n' 1<>"$dir/reply"
+    ) >/dev/null 2>&1 </dev/null &
+    await_reply
     case $reply in
-        ok:*) printf '%s\n' "${reply#ok:}"; return 0 ;;
+        ok:*) printf '%s\n' "${reply#ok:}" ;;
         error) return 2 ;;
         timeout)
-            tmux display-popup -C ${TMUX_PANE:+-t "$TMUX_PANE"} >/dev/null 2>&1
+            tmux display-popup -C $target >/dev/null 2>&1
             return 1 ;;
         *) return 1 ;;
     esac
 }
 
-tmux_prompt() {
+# Your other terminals on this machine (from utmp), minus the ones the
+# requesting process chain is using, so nothing is written over the agent.
+other_ttys() {
+    mine=
+    p=${sudo_pid:-$$} i=0
+    while [ -n "$p" ] && [ "$p" -gt 1 ] 2>/dev/null && [ $i -lt 12 ]; do
+        t=$(ps -o tty= -p "$p" 2>/dev/null | tr -d ' ')
+        case $t in '' | '?' | '??') ;; *) mine="$mine /dev/$t " ;; esac
+        p=$(ps -o ppid= -p "$p" 2>/dev/null | tr -d ' ')
+        i=$((i + 1))
+    done
+    who 2>/dev/null | awk -v u="$(id -un)" '$1 == u { print "/dev/" $2 }' | sort -u |
+        while IFS= read -r t; do
+            case $mine in *" $t "*) continue ;; esac
+            [ -w "$t" ] && printf '%s\n' "$t"
+        done
+}
+
+# No GUI and no tmux client: wait for "agent-sudo --approve" from another of
+# your terminals, and tell those terminals about it. Only if one exists.
+prompt_terminal() {
+    ttys=$(other_ttys)
+    [ -n "$ttys" ] || return 2
+    new_request "$1" || return 2
+    : >"$dir/pending"
+    for t in $ttys; do
+        printf '\r\n\a[agent-sudo] a sudo command is waiting for your approval (%ss). Run: agent-sudo --approve\r\n' \
+            "$TIMEOUT" >"$t" 2>/dev/null
+    done
+    await_reply
+    case $reply in
+        ok:*) printf '%s\n' "${reply#ok:}" ;;
+        *) return 1 ;;
+    esac
+}
+
+# The approving side, on a real terminal: tmux popup or agent-sudo --approve.
+tty_prompt() {
     dir=$1 reply=cancel
     : >"$dir/started"
     finish() { stty echo 2>/dev/null; printf '%s\n' "$reply" 1<>"$dir/reply"; }
     trap finish EXIT
     trap 'exit 0' INT TERM HUP
     cat "$dir/msg"
-    printf '\nPassword (Enter to approve, empty or Ctrl-C to deny, %ss timeout): ' "$TIMEOUT"
+    printf '\nPassword (Enter to approve, empty or Ctrl-C to deny): '
     stty -echo 2>/dev/null
     IFS= read -r pw || pw=
     stty echo 2>/dev/null
@@ -357,12 +482,29 @@ tmux_prompt() {
     exit 0
 }
 
+# agent-sudo --approve: answer the oldest pending request owned by you.
+approve_mode() {
+    [ -t 0 ] || die "--approve needs to run in a terminal"
+    set +f
+    for d in $(ls -dtr /tmp/agent-sudo.* 2>/dev/null); do
+        [ -d "$d" ] && [ -O "$d" ] && [ -e "$d/pending" ] && [ ! -e "$d/started" ] &&
+            [ -p "$d/reply" ] || continue
+        set -f
+        tty_prompt "$d"
+    done
+    echo "agent-sudo: nothing is waiting for approval"
+}
+
 # Try the prompts suited to where we are. Over SSH, tmux comes first and the
 # macOS dialog is skipped, so nothing opens on a screen you can't see.
 get_password() {
     method=${AGENT_SUDO_PROMPT:-}
     if [ -z "$method" ]; then
-        if [ -n "${SSH_CONNECTION:-}" ]; then method="tmux gui"; else method="gui tmux"; fi
+        if [ -n "${SSH_CONNECTION:-}" ]; then
+            method="tmux gui terminal"
+        else
+            method="gui tmux terminal"
+        fi
     fi
     for m in $method; do
         case $m in
@@ -373,9 +515,8 @@ get_password() {
                     [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ] || continue
                 fi
                 prompt_gui "$1"; rc=$? ;;
-            tmux)
-                [ -n "${TMUX:-}" ] || continue
-                prompt_tmux "$1"; rc=$? ;;
+            tmux) prompt_tmux "$1"; rc=$? ;;
+            terminal) prompt_terminal "$1"; rc=$? ;;
             *) continue ;;
         esac
         [ "$rc" -eq 2 ] && continue
@@ -441,17 +582,18 @@ EOF
     parse_sudo_opts "$@" # may set CWD from -D
     shift "$SKIP"
 
-    chain= p=$parent i=0
-    while [ -n "$p" ] && [ "$p" -gt 1 ] 2>/dev/null && [ $i -lt 6 ]; do
-        c=$(ps -o comm= -p "$p" 2>/dev/null)
-        chain="$chain${chain:+ <- }${c##*/}"
-        p=$(ps -o ppid= -p "$p" 2>/dev/null | tr -d ' ')
-        i=$((i + 1))
-    done
-
     cmd=$(display_cmd "$@")
-    analyze "$@"
     logcmd=$(sanitize "$cmd" | tr '\n' ' ')
+
+    # Only requests that trace back to your own terminal may ask; anything else
+    # (cron, services, desktop apps) is refused without showing a prompt.
+    if ! from_your_terminal "$parent"; then
+        log "refused, not from your terminal: $logcmd (chain: $CHAIN)"
+        die "refusing: not started from your terminal (process chain: ${CHAIN:-unknown})"
+    fi
+    chain=$CHAIN
+
+    analyze "$@"
 
     if [ -n "$DENIES" ]; then
         log "denied by rules: $logcmd ($(printf '%s' "$DENIES" | tr '\n' ';'))"
@@ -459,13 +601,17 @@ EOF
         exit 1
     fi
 
-    text="A process without a terminal is asking to run a command as $RUNAS.
+    # The first line must stay fixed text: kdialog/Qt decide whether to render
+    # HTML by looking for a tag before the first line break.
+    text="A process without a terminal is asking to run a command with sudo.
 
 Command:
 ${cmd:-(none)}
 
+Run as:        $RUNAS
 Directory:     ${CWD:-unknown}
-Requested by:  ${chain:-unknown}"
+Requested by:  ${chain:-unknown}
+Started from:  $ORIGIN"
     if [ -n "$WARNS" ]; then
         text="$text
 
@@ -486,7 +632,7 @@ Enter your password to approve. Deny or close to refuse."
             printf '%s\n' "$pw" ;;
         3)
             log "no prompt available: $logcmd"
-            die "no way to ask for approval here: needs a display plus a dialog program (zenity, kdialog or ssh-askpass; built in on macOS), or a tmux session. Run it yourself: sudo $(sanitize "$cmd")" ;;
+            die "no way to ask for approval: no GUI dialog, no tmux client, and no other terminal of yours to run 'agent-sudo --approve' in. Open another terminal (or use tmux), or run it yourself: sudo $(sanitize "$cmd")" ;;
         *)
             log "cancelled: $logcmd"
             die "denied by user" ;;
@@ -495,6 +641,8 @@ Enter your password to approve. Deny or close to refuse."
 
 case ${1-} in
     --check) shift; check_mode "$@" ;;
-    --tmux-prompt) tmux_prompt "$2" ;;
+    --tty-prompt) tty_prompt "$2" ;;
+    --approve) approve_mode ;;
+    --from-terminal) from_your_terminal "$PPID" ;;
     *) prompt_mode ;;
 esac

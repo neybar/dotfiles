@@ -2,9 +2,9 @@
 # Makefile to copy dotfiles into place
 #
 .PHONY: fetch copy diff diff-long install update clean unlink bootstrap-omz update-omz \
-	install-agent-sudo test-agent-sudo check-agent-sudo
+	sync-agent-sudo install-agent-sudo test-agent-sudo
 
-update: fetch install update-omz check-agent-sudo
+update: fetch install update-omz
 
 # Clone oh-my-zsh custom plugins/themes if missing, and re-clone any leftover
 # submodule checkouts (identified by .git being a file rather than a directory).
@@ -76,7 +76,7 @@ copy:
 	@[ -f ~/.zshrc.local ] || cp $(CURDIR)/.zshrc.local ~/.zshrc.local
 	@ln -sfn $(CURDIR)/.zshrc ~/.zshrc
 
-install: copy bootstrap-omz
+install: copy bootstrap-omz sync-agent-sudo
 	# @/bin/zsh ~/.zshrc
 	@vim +PlugUpdate +qall
 	@echo "\033[0;33mConfiguring git user info...\033[0m"
@@ -90,28 +90,32 @@ install: copy bootstrap-omz
 
 
 # agent-sudo: sudo approval prompt for agents/IDEs (see agent-sudo/README.md).
-# Installs root-owned under /usr/local, so it is separate from `make install`.
-# Paths must match agent-sudo/install.sh.
-AGENT_SUDO_FILES = askpass:/usr/local/libexec/agent-sudo/askpass \
-	rules:/usr/local/libexec/agent-sudo/rules \
-	agent-sudo:/usr/local/bin/agent-sudo
+# make install / make update install it when missing or changed, asking for
+# your sudo password only then. A failure doesn't stop the rest of the install.
+# Skip with SKIP_AGENT_SUDO=1 (e.g. machines where you have no sudo).
+sync-agent-sudo:
+	@if [ -n "$(SKIP_AGENT_SUDO)" ]; then \
+		echo "agent-sudo: skipped (SKIP_AGENT_SUDO set)"; \
+	elif ! command -v sudo >/dev/null 2>&1; then \
+		echo "agent-sudo: skipped (sudo not installed)"; \
+	elif sh agent-sudo/install.sh --check >/dev/null; then \
+		echo "agent-sudo: up to date"; \
+	else \
+		sh agent-sudo/install.sh --check; \
+		$(MAKE) --no-print-directory install-agent-sudo || \
+			echo "\033[0;31magent-sudo: install failed; retry with make install-agent-sudo\033[0m"; \
+	fi
 
+# Install or reinstall unconditionally (runs the tests first).
 install-agent-sudo: test-agent-sudo
-	@sudo sh agent-sudo/install.sh
+	@if [ "$$(uname -s)" = Linux ] && [ -n "$$DISPLAY$$WAYLAND_DISPLAY" ]; then \
+		sudo sh agent-sudo/install.sh --gui "$$XDG_CURRENT_DESKTOP"; \
+	else \
+		sudo sh agent-sudo/install.sh; \
+	fi
 
 test-agent-sudo:
 	@sh agent-sudo/test.sh
-
-# Report (without failing) when the installed copy is missing or out of date.
-check-agent-sudo:
-	@for pair in $(AGENT_SUDO_FILES); do \
-		src=agent-sudo/$${pair%%:*}; dst=$${pair#*:}; \
-		if [ ! -e "$$dst" ]; then \
-			echo "\033[0;33magent-sudo not installed (optional): make install-agent-sudo\033[0m"; break; \
-		elif ! cmp -s "$$src" "$$dst"; then \
-			echo "\033[0;33magent-sudo is out of date: make install-agent-sudo\033[0m"; break; \
-		fi; \
-	done
 
 # remove any directories since rsync isn't quite smart enough.
 unlink:
