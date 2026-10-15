@@ -825,7 +825,9 @@ EOF
     [ -z "$CWD" ] || hint="cd $(shquote "$CWD") && $hint"
 
     cmd=$(display_cmd "$@")
-    logcmd=$(sanitize "$cmd" | tr '\n' ' ')
+    # Invisible and bidi characters marked here too, so a log viewer can't
+    # show the command reordered.
+    logcmd=$(mark_invisible "$(sanitize "$cmd")" | tr '\n' ' ')
 
     # Only requests that trace back to your own terminal may ask; anything else
     # (cron, services, desktop apps) is refused without showing a prompt.

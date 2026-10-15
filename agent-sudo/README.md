@@ -144,8 +144,9 @@ than 20 lines add a warning.
 
 In a dialog, Approve with your password, or Deny / close it to refuse. In the
 tmux popup, type the password and press Enter; an empty line or Ctrl-C
-refuses. Refusing prints `denied by user`; approving with an empty password
-prints `denied: no password entered`. Every prompt times out after 120
+refuses. Refusing prints `denied by user`, and so does an empty line in the
+popup; clicking Approve in a dialog with an empty password prints
+`denied: no password entered`. Every prompt times out after 120
 seconds, as a refusal. Decisions (approved, denied, cancelled, but
 never the password) are logged with `logger -t agent-sudo`. On Linux, read them
 with `journalctl -t agent-sudo`; on macOS they go to the unified log, under
