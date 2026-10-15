@@ -194,6 +194,7 @@ Steps 1-4 passed on 2026-10-15 (see results log). The prompt now only appears in
 | 2026-10-15 | macOS 26.6.2 arm64, Claude in tmux 3.8 (local) | Same with `TMUX`/`TMUX_PANE` removed | pass | refused in 0s, no popup, logged `no prompt available` |
 | 2026-10-15 | Ubuntu 24.04 server, SSH | Security fixes 1, 3-7 (repo copy, not installed) | pass | `test.sh` 120/120 under gawk, mawk, `bash --posix`. Against the previous askpass 13 of the new cases fail. Through the real sudo: a script named `sudo` is refused ("not the real sudo", effective uid 1000) where the old askpass reached the prompt stage; `HOME=/tmp/x` no longer unprotects your home; prompt text checked by printing it |
 | 2026-10-15 | Ubuntu 24.04 server, SSH, tmux 3.4 | Bug fixes, reason-checked tests, tmux-test.sh hardening (repo copy) | pass | `test.sh` 132/132 under gawk, mawk, `bash --posix`; every one-rule-deleted mutant fails; `tmux-test.sh` 5/5, and fails both mutants (silent popup, wrong-session client) |
+| 2026-10-15 | Ubuntu 24.04 server, SSH, tmux 3.4 | Refactor (repo copy), after pulling the Mac's 677ed5d and 5350477 | pass | `test.sh` 132/132 under gawk, mawk, `bash --posix`; `tmux-test.sh` 5/5; `origin-test.sh` all ok; prompt chain unchanged (`agent-sudo <- zsh <- claude`); `make sync-agent-sudo` prints the check once and stops without a terminal |
 | 2026-10-15 | macOS 26.6.2 arm64 (bash 3.2 `sh`, BWK awk 20200816) | `test.sh` at 856ec39 (repo copy) | 131/133 | Two macOS-only failures. (1) Fake `sudo` refused as "parent process is 'sh'": macOS `ps -o comm=` shows argv[0], and for a script that is the interpreter, so the uid check was never reached. (2) U+200B case refused as "arguments don't match": with `LANG=en_US.UTF-8`, `ps` shows U+200B as `\040^K` and U+202E as `\040-.`, so the letters-and-digits check saw `K` on one side only |
 | 2026-10-15 | macOS 26.6.2 arm64 | `LC_ALL=C ps -ww -o args=` encoding, all 255 bytes plus 30 random byte strings | mapped | tab `\011`, newline `\012`, other control bytes `^X`, DEL `^?`, printable ASCII as is (`\` and `^` not escaped), 128-159 `M^X`, 160 `\240`, 161-254 `M-x`, 255 `M^?`, arguments joined by one space (a trailing `''` leaves a trailing space). No byte's form depends on its neighbours. The new `mac_ps_args` matches `ps` exactly on all cases |
 | 2026-10-15 | macOS 26.6.2 arm64 | `test.sh` after security fix 2 (repo copy) | pass | 140/140 with case folding always on (`RM -rf /etc`, `CSRUTIL disable`, `rm -rf /ETC` denied; BWK `tolower()` and the for-in copy fine); `mark_invisible` cases (U+202E, U+200B) pass. New Darwin cases: punctuation-only forgery (`: ~/x` vs `: /x`) and trailing-`''` forgery refused; spaces and `\011`/`^A` warnings shown. Mutants: the old letters-and-digits check fails the `~/x` case; no space warning fails its case. Fake `sudo` on Darwin now uses `exec -a sudo`, so it reaches the uid check |
@@ -420,11 +421,18 @@ install diff, home directory and case-insensitive matching. Top-level README:
 shim and install confirmation. askpass header: environment variables. Here:
 counts, branch wording, historical lead-in, Notes for Claude trimmed.
 
-### Refactors (later)
+### Refactors
 
-`prompt_mode` ~110 lines (split argv read / cwd / prompt text); duplicated
-deny reporting and `ps` lookups; `parse_sudo_opts` appends to `MODE` without
-saying so; unquoted tmux target; stale comment at askpass:373.
+**Done 2026-10-15** (no behaviour change; all suites pass): `prompt_mode`
+split into `check_caller`, `find_cwd` and `build_prompt_text`; shared
+`report_denies`; one `ps` per ancestor in `from_your_terminal`; `uname` once
+(`OS`); `optval` takes one spelling per option; awk `check_segment` split into
+`check_recursive` and `check_find`; kdialog comment no longer duplicated;
+Makefile runs `install.sh --check` once; `install.sh` reports each installed
+file; `test.sh` cleans up on interrupt and its warn cases are all under
+"Allowed with a warning"; `bin/sudo` uses `set -u`. Left as is: the
+hard-coded install paths (each file must stand alone; `dev/*` and `test.sh`
+rewrite the `NAME=` lines).
 
 ### Still to run on a Mac
 

@@ -41,6 +41,7 @@ NL='
 '
 TAB=$(printf '\t')
 SOH=$(printf '\001')
+OS=$(uname -s)
 
 die() { printf 'agent-sudo: %s\n' "$*" >&2; exit 1; }
 log() {
@@ -101,8 +102,8 @@ mark_invisible() {
 # Record the value of a sudo option that matters for the prompt or analysis.
 optval() {
     case $1 in
-        u | -u | --user) RUNAS=$2 ;;
-        D | -D | --chdir) CWD=$2 ;;
+        -u | --user) RUNAS=$2 ;;
+        -D | --chdir) CWD=$2 ;;
     esac
 }
 
@@ -150,7 +151,7 @@ parse_sudo_opts() {
                     c=${f%"${f#?}"} f=${f#?}
                     case $c in
                         [aCcDgpRrTtUu])
-                            if [ -n "$f" ]; then optval "$c" "$f"; else need=-$c; fi
+                            if [ -n "$f" ]; then optval "-$c" "$f"; else need=-$c; fi
                             break ;;
                         h) break ;; # -hHOST (attached only); bare -h is help
                         [sie]) MODE="$MODE$c" ;;
@@ -202,44 +203,49 @@ function emit(level, msg) {
     seen[level, msg] = 1
     print level "\t" msg
 }
-function check_segment(   x, j, w, tok, rec, endopts, hits, tgts, del, np) {
+# rm/chmod/chown/chgrp at seg[x] (command name w): deny when recursive on a
+# protected path, warn on any other recursive rm.
+function check_recursive(x, w,   j, tok, rec, endopts, hits, tgts) {
+    rec = 0; endopts = 0; hits = ""; tgts = ""
+    for (j = x + 1; j <= m; j++) {
+        tok = seg[j]
+        if (!endopts && tok == "--") { endopts = 1; continue }
+        if (!endopts && tok ~ /^-/) {
+            if (tok ~ /^--no-pres/) emit("deny", w " --no-preserve-root")
+            if (tok ~ /^--rec/ || (w == "rm" && tok ~ /^-[^-]*[rR]/) || (w != "rm" && tok ~ /^-[^-]*R/))
+                rec = 1
+            continue
+        }
+        if (protected(tok)) hits = hits " " tok
+        else tgts = tgts " " tok
+    }
+    if (rec && hits != "") emit("deny", "recursive " w " on a protected path:" hits)
+    else if (rec && w == "rm") emit("warn", "recursive delete:" tgts)
+}
+# find at seg[x]: deny deleting under a protected starting path.
+function check_find(x,   j, del, hits, np) {
+    del = 0; hits = ""
+    for (j = x + 1; j <= m; j++) {
+        if (seg[j] == "-delete") del = 1
+        if (seg[j] ~ /^-(exec|execdir|ok|okdir)$/ && j < m && base(seg[j + 1]) == "rm") del = 1
+    }
+    j = x + 1
+    while (j <= m && (seg[j] ~ /^-([HLP]|O[0-9]*)$/ || seg[j] == "-D")) j += (seg[j] == "-D") ? 2 : 1
+    for (np = 0; j <= m && seg[j] !~ /^[-!]/; j++) {
+        np++
+        if (protected(seg[j])) hits = hits " " seg[j]
+    }
+    # No starting path: GNU find searches the current directory.
+    if (np == 0 && protected(".")) hits = " . (current directory)"
+    if (del && hits != "") emit("deny", "find deleting under a protected path:" hits)
+    else if (del) emit("warn", "find deletes files")
+}
+function check_segment(   x, w) {
     for (x = 1; x <= m; x++) {
         w = base(seg[x])
         if (fold) w = tolower(w)
-        if (w == "rm" || w == "chmod" || w == "chown" || w == "chgrp") {
-            rec = 0; endopts = 0; hits = ""; tgts = ""
-            for (j = x + 1; j <= m; j++) {
-                tok = seg[j]
-                if (!endopts && tok == "--") { endopts = 1; continue }
-                if (!endopts && tok ~ /^-/) {
-                    if (tok ~ /^--no-pres/) emit("deny", w " --no-preserve-root")
-                    if (tok ~ /^--rec/ || (w == "rm" && tok ~ /^-[^-]*[rR]/) || (w != "rm" && tok ~ /^-[^-]*R/))
-                        rec = 1
-                    continue
-                }
-                if (protected(tok)) hits = hits " " tok
-                else tgts = tgts " " tok
-            }
-            if (rec && hits != "") emit("deny", "recursive " w " on a protected path:" hits)
-            else if (rec && w == "rm") emit("warn", "recursive delete:" tgts)
-        }
-        if (w == "find") {
-            del = 0; hits = ""
-            for (j = x + 1; j <= m; j++) {
-                if (seg[j] == "-delete") del = 1
-                if (seg[j] ~ /^-(exec|execdir|ok|okdir)$/ && j < m && base(seg[j + 1]) == "rm") del = 1
-            }
-            j = x + 1
-            while (j <= m && (seg[j] ~ /^-([HLP]|O[0-9]*)$/ || seg[j] == "-D")) j += (seg[j] == "-D") ? 2 : 1
-            for (np = 0; j <= m && seg[j] !~ /^[-!]/; j++) {
-                np++
-                if (protected(seg[j])) hits = hits " " seg[j]
-            }
-            # No starting path: GNU find searches the current directory.
-            if (np == 0 && protected(".")) hits = " . (current directory)"
-            if (del && hits != "") emit("deny", "find deleting under a protected path:" hits)
-            else if (del) emit("warn", "find deletes files")
-        }
+        if (w == "rm" || w == "chmod" || w == "chown" || w == "chgrp") check_recursive(x, w)
+        if (w == "find") check_find(x)
     }
 }
 BEGIN {
@@ -294,7 +300,7 @@ account_home() {
     h=
     if command -v getent >/dev/null 2>&1; then
         h=$(getent passwd "$(id -u)" | cut -d: -f6)
-    elif [ "$(uname -s)" = Darwin ]; then
+    elif [ "$OS" = Darwin ]; then
         h=$(dscl . -read "/Users/$(id -un)" NFSHomeDirectory 2>/dev/null |
             sed -n 's/^NFSHomeDirectory: //p')
     fi
@@ -308,7 +314,7 @@ account_home() {
 # FOLD=1 does the same elsewhere.
 analyze() {
     fold=${FOLD-}
-    [ "$(uname -s)" = Darwin ] && fold=1
+    [ "$OS" = Darwin ] && fold=1
     # The command goes through stdin: an environment variable is capped at
     # 128 KB on Linux, and a failed awk must not mean "no findings".
     out=$(printf '%s' "$*" | AS_HOME="$USER_HOME" AS_ENVHOME="${HOME:-}" AS_CWD="$CWD" \
@@ -324,6 +330,12 @@ analyze() {
     [ $# -eq 0 ] && [ -z "$MODE" ] && out="$out${NL}warn${TAB}no command (sudo -v / -l): only refreshes or lists credentials"
     DENIES=$(printf '%s\n' "$out" | sed -n "s/^deny${TAB}//p")
     WARNS=$(printf '%s\n' "$out" | sed -n "s/^warn${TAB}//p")
+}
+
+# Print the deny reasons and exit 1.
+report_denies() {
+    printf '%s\n' "$DENIES" | sed 's/^/agent-sudo: denied: /' >&2
+    exit 1
 }
 
 check_mode() {
@@ -343,10 +355,7 @@ check_mode() {
     shift "$SKIP"
     analyze "$@"
     [ -n "$WARNS" ] && printf '%s\n' "$WARNS" | sed 's/^/warn: /'
-    if [ -n "$DENIES" ]; then
-        printf '%s\n' "$DENIES" | sed 's/^/agent-sudo: denied: /' >&2
-        exit 1
-    fi
+    [ -z "$DENIES" ] || report_denies
     exit 0
 }
 
@@ -358,9 +367,11 @@ from_your_terminal() {
     ORIGIN= CHAIN=
     p=$1 i=0
     while [ -n "$p" ] && [ "$p" -gt 1 ] 2>/dev/null && [ $i -lt 40 ]; do
-        c=$(ps -o comm= -p "$p" 2>/dev/null)
+        # comm last: it can contain spaces.
+        read -r ppid t c <<EOF
+$(ps -o ppid= -o tty= -o comm= -p "$p" 2>/dev/null)
+EOF
         c=${c##*/}
-        t=$(ps -o tty= -p "$p" 2>/dev/null | tr -d ' ')
         CHAIN="$CHAIN${CHAIN:+ <- }$c"
         case $t in
             '' | '?' | '??' | -) ;;
@@ -370,7 +381,7 @@ from_your_terminal() {
                     return 0
                 fi ;;
         esac
-        p=$(ps -o ppid= -p "$p" 2>/dev/null | tr -d ' ')
+        p=$ppid
         i=$((i + 1))
     done
     return 1
@@ -386,7 +397,7 @@ with_timeout() {
 }
 
 dialog_mac() {
-    [ "$(uname -s)" = Darwin ] || return 2
+    [ "$OS" = Darwin ] || return 2
     out=$(osascript \
         -e 'on run argv' \
         -e 'try' \
@@ -418,8 +429,7 @@ dialog_zenity() {
 # Two steps, because kdialog's password box turns newlines into spaces: a
 # message box shows the command exactly, then a separate box takes the
 # password. kdialog expands \n and \\ escapes, so every backslash is doubled.
-# Qt only renders the message as HTML if a tag appears before its first line
-# break, and the first line is our fixed sentence.
+# The message isn't rendered as HTML: see the fixed first line in prompt_mode.
 dialog_kdialog() {
     command -v kdialog >/dev/null 2>&1 || return 2
     with_timeout kdialog --title "$TITLE" --warningcontinuecancel \
@@ -451,7 +461,7 @@ dialog_sshaskpass() {
 }
 
 prompt_gui() {
-    if [ "$(uname -s)" = Darwin ]; then dialog_mac "$1"; return; fi
+    if [ "$OS" = Darwin ]; then dialog_mac "$1"; return; fi
     # KDE gets kdialog (ships with Plasma); elsewhere zenity shows text exactly.
     case ${XDG_CURRENT_DESKTOP:-} in
         *KDE* | *kde*) order="kdialog zenity sshaskpass" ;;
@@ -553,7 +563,7 @@ get_password() {
     for m in $method; do
         case $m in
             gui)
-                if [ "$(uname -s)" = Darwin ]; then
+                if [ "$OS" = Darwin ]; then
                     [ -z "${SSH_CONNECTION:-}" ] || [ -n "${AGENT_SUDO_PROMPT:-}" ] || continue
                 else
                     [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ] || continue
@@ -669,7 +679,8 @@ mac_recheck() {
 
 # ---- main: called by sudo ---------------------------------------------------
 
-prompt_mode() {
+# Refuse unless our parent is the real setuid sudo. Sets sudo_pid and parent.
+check_caller() {
     sudo_pid=$PPID
     sudo_comm=$(ps -o comm= -p "$sudo_pid" 2>/dev/null)
     sudo_comm=${sudo_comm##*/}
@@ -686,6 +697,61 @@ EOF
     [ "$euid" = 0 ] && [ "$ruid" = "$(id -u)" ] ||
         die "refusing: parent process is not the real sudo (effective uid ${euid:-?}, real uid ${ruid:-?})"
     parent=$(ps -o ppid= -p "$sudo_pid" 2>/dev/null | tr -d ' ')
+}
+
+# sudo is setuid, so its own cwd is usually unreadable; its parent's matches.
+# Sets CWD (empty if unknown).
+find_cwd() {
+    CWD=
+    for p in "$sudo_pid" "$parent"; do
+        CWD=$(readlink "/proc/$p/cwd" 2>/dev/null) ||
+            CWD=$(lsof -a -p "$p" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p')
+        # lsof reports errors in the name field, e.g. "/proc/1/cwd (readlink: ...)".
+        case $CWD in /*) [ -d "$CWD" ] || CWD= ;; *) CWD= ;; esac
+        [ -n "$CWD" ] && break
+    done
+}
+
+# The approval prompt for $cmd. Adds display warnings to WARNS; sets text.
+build_prompt_text() {
+    # What you see must match what runs: details and warnings first, so a long
+    # command can't push them out of view, then the command with every line
+    # marked, so text inside an argument can't pass for part of the prompt.
+    shown=$(mark_invisible "${cmd:-(none)}")
+    lines=$(printf '%s\n' "$shown" | wc -l | tr -d ' ')
+    [ "$shown" = "${cmd:-(none)}" ] ||
+        WARNS="${WARNS}${WARNS:+$NL}contains invisible or direction-changing characters (shown as <U+XXXX>)"
+    [ "$(printf '%s' "$cmd" | LC_ALL=C tr -d '\000-\177' | wc -c | tr -d ' ')" -eq 0 ] ||
+        WARNS="${WARNS}${WARNS:+$NL}contains non-ASCII characters: look-alike letters are possible"
+    [ "$lines" -le 20 ] ||
+        WARNS="${WARNS}${WARNS:+$NL}long command ($lines lines): read all of it before approving"
+
+    # The first line must stay fixed text: kdialog/Qt decide whether to render
+    # HTML by looking for a tag before the first line break.
+    text="A process without a terminal is asking to run a command with sudo.
+
+Run as:        $RUNAS
+Directory:     ${CWD:-unknown}
+Requested by:  ${chain:-unknown}
+Started from:  $ORIGIN"
+    if [ -n "$WARNS" ]; then
+        text="$text
+
+WARNINGS:
+$(printf '%s\n' "$WARNS" | sed 's/^/  * /')"
+    fi
+    if [ "$lines" -gt 1 ]; then label="Command ($lines lines):"; else label="Command:"; fi
+    text="$text
+
+$label
+$(printf '%s\n' "$shown" | sed 's/^/| /')
+
+Enter your password to approve. Deny or close to refuse."
+    text=$(sanitize "$text")
+}
+
+prompt_mode() {
+    check_caller
     USER_HOME=$(account_home)
 
     # sudo's argv, exactly: from /proc on Linux; on macOS from the agent-sudo
@@ -695,7 +761,7 @@ EOF
     listing=
     if [ -r "/proc/$sudo_pid/cmdline" ]; then
         listing=$(tr '\n\0' '\001\n' <"/proc/$sudo_pid/cmdline"; echo "$end")
-    elif [ "$(uname -s)" = Darwin ] && [ -n "$parent" ]; then
+    elif [ "$OS" = Darwin ] && [ -n "$parent" ]; then
         listing=$(mac_argv "$parent"; echo "$end")
     fi
     set --
@@ -706,7 +772,7 @@ EOF
     done <<EOF
 $listing
 EOF
-    if [ "$(uname -s)" = Darwin ]; then
+    if [ "$OS" = Darwin ]; then
         # Only the wrapper's argv is readable, and it must be the one that ran
         # this sudo: "sh WRAPPER ARGS" runs "sudo -k -A ARGS". ps shows sudo's
         # args joined with spaces and escaped (see mac_ps_args); they must
@@ -748,15 +814,7 @@ EOF
     case ${1##*/} in sudoedit) MODE=e ;; esac
     shift
 
-    # sudo is setuid, so its own cwd is usually unreadable; its parent's matches.
-    CWD=
-    for p in "$sudo_pid" "$parent"; do
-        CWD=$(readlink "/proc/$p/cwd" 2>/dev/null) ||
-            CWD=$(lsof -a -p "$p" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p')
-        # lsof reports errors in the name field, e.g. "/proc/1/cwd (readlink: ...)".
-        case $CWD in /*) [ -d "$CWD" ] || CWD= ;; *) CWD= ;; esac
-        [ -n "$CWD" ] && break
-    done
+    find_cwd
     # For the "run it yourself" hint: sudo's own options as given, minus the
     # "-k -A" that agent-sudo adds.
     hint=$(display_cmd "$@")
@@ -778,48 +836,14 @@ EOF
     chain=$CHAIN
 
     analyze "$@"
-    [ "$(uname -s)" != Darwin ] || mac_recheck "$@"
+    [ "$OS" != Darwin ] || mac_recheck "$@"
 
     if [ -n "$DENIES" ]; then
         log "denied by rules: $logcmd ($(printf '%s' "$DENIES" | tr '\n' ';'))"
-        printf '%s\n' "$DENIES" | sed 's/^/agent-sudo: denied: /' >&2
-        exit 1
+        report_denies
     fi
 
-    # What you see must match what runs: details and warnings first, so a long
-    # command can't push them out of view, then the command with every line
-    # marked, so text inside an argument can't pass for part of the prompt.
-    shown=$(mark_invisible "${cmd:-(none)}")
-    lines=$(printf '%s\n' "$shown" | wc -l | tr -d ' ')
-    [ "$shown" = "${cmd:-(none)}" ] ||
-        WARNS="${WARNS}${WARNS:+$NL}contains invisible or direction-changing characters (shown as <U+XXXX>)"
-    [ "$(printf '%s' "$cmd" | LC_ALL=C tr -d '\000-\177' | wc -c | tr -d ' ')" -eq 0 ] ||
-        WARNS="${WARNS}${WARNS:+$NL}contains non-ASCII characters: look-alike letters are possible"
-    [ "$lines" -le 20 ] ||
-        WARNS="${WARNS}${WARNS:+$NL}long command ($lines lines): read all of it before approving"
-
-    # The first line must stay fixed text: kdialog/Qt decide whether to render
-    # HTML by looking for a tag before the first line break.
-    text="A process without a terminal is asking to run a command with sudo.
-
-Run as:        $RUNAS
-Directory:     ${CWD:-unknown}
-Requested by:  ${chain:-unknown}
-Started from:  $ORIGIN"
-    if [ -n "$WARNS" ]; then
-        text="$text
-
-WARNINGS:
-$(printf '%s\n' "$WARNS" | sed 's/^/  * /')"
-    fi
-    if [ "$lines" -gt 1 ]; then label="Command ($lines lines):"; else label="Command:"; fi
-    text="$text
-
-$label
-$(printf '%s\n' "$shown" | sed 's/^/| /')
-
-Enter your password to approve. Deny or close to refuse."
-    text=$(sanitize "$text")
+    build_prompt_text
 
     pw=$(get_password "$text")
     rc=$?

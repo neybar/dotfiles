@@ -7,6 +7,8 @@
 # in an approval prompt. Cron jobs, services and desktop-launched programs have
 # no such terminal and get plain sudo, exactly as before.
 
+set -u
+
 REAL=/usr/bin/sudo
 [ -x "$REAL" ] || REAL=/bin/sudo
 AGENT_SUDO=/usr/local/bin/agent-sudo

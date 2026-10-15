@@ -101,10 +101,10 @@ sync-agent-sudo:
 		echo "agent-sudo: skipped (SKIP_AGENT_SUDO set)"; \
 	elif ! command -v sudo >/dev/null 2>&1; then \
 		echo "agent-sudo: skipped (sudo not installed)"; \
-	elif sh agent-sudo/install.sh --check >/dev/null; then \
+	elif out=$$(sh agent-sudo/install.sh --check); then \
 		echo "agent-sudo: up to date"; \
 	else \
-		sh agent-sudo/install.sh --check; \
+		printf '%s\n' "$$out"; \
 		$(MAKE) --no-print-directory install-agent-sudo || \
 			echo "\033[0;31magent-sudo: install failed; retry with make install-agent-sudo\033[0m"; \
 	fi

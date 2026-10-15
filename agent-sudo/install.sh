@@ -104,8 +104,8 @@ install -d -m 755 -o 0 -g 0 "$libdir"
 for pair in $FILES; do
     case ${pair%%:*} in rules) mode=644 ;; *) mode=755 ;; esac
     install -m "$mode" -o 0 -g 0 "$src/${pair%%:*}" "${pair#*:}"
+    echo "installed ${pair#*:}"
 done
-echo "installed $libdir/{askpass,rules} and /usr/local/bin/agent-sudo"
 
 # Root ownership only protects the helper if no directory above it is writable
 # by anyone but root.

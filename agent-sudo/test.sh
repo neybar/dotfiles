@@ -7,6 +7,9 @@ HOME=/home/tester
 export HOME
 pass=0 fail=0
 rules=$dir/rules
+tmp=
+trap 'rm -rf "$tmp"' EXIT
+trap 'exit 130' INT TERM HUP
 
 # t EXPECT [--cwd DIR] [--fold] SUDO_ARGS...   EXPECT is allow, warn or deny,
 # optionally with :REASON, a substring the output must contain.
@@ -149,6 +152,11 @@ t warn:firewall\ rules iptables -F
 t warn:raw\ block dd if=/dev/zero of=/tmp/img bs=1M count=1
 t warn:no\ command -v
 
+t warn dd if=/dev/sda of=/dev/null count=1
+t warn rm -rf ./build
+t warn rm -rf '~root/projects/x'
+t warn --cwd /home/tester/proj/build find -delete
+
 # Allowed
 t allow apt update
 t allow apt-get install -y zenity
@@ -160,16 +168,12 @@ t allow ls -la /
 t allow chmod 644 /etc/hosts
 t allow chown -R www-data /srv/site
 t allow find / -name '*.conf'
-t warn dd if=/dev/sda of=/dev/null count=1
 t allow ssh-keygen -A
 t allow -u postgres psql
-t warn rm -rf ./build
 t allow --cwd '' rm build
-t warn rm -rf '~root/projects/x'
 t allow chown -R tester ../sibling
 t allow chown -R nobody /mnt/c/Users/tester/proj
 t allow find -name '*.conf' -print
-t warn --cwd /home/tester/proj/build find -delete
 
 # Broken rules files fail closed
 tmp=$(mktemp -d)
