@@ -4,6 +4,9 @@ Lets AI agents and other tools that have no terminal (Claude Code, Cursor, Codex
 IDE task runners, `!` commands in Claude Code) run sudo commands, with your approval
 for each one. The approval prompt shows the exact command before you type your
 password, and rules refuse some commands outright (`rm -rf /`, `mkfs`, ...).
+The prompt is a desktop dialog, or a tmux popup when the agent runs in tmux;
+anywhere else the request is refused with the command to run yourself (see
+[Where the prompt appears](#where-the-prompt-appears)).
 
 Terminal sudo is unchanged: in a real terminal, sudo still asks for the password
 as text.
@@ -59,13 +62,16 @@ This installs, owned by root:
 | `/usr/local/libexec/agent-sudo/askpass` | sudo askpass helper: analysis + prompt |
 | `/usr/local/libexec/agent-sudo/rules` | deny/warn rules |
 
+`make copy` also puts the shim at `~/bin/sudo`, owned by you. That's fine: it
+only chooses between `/usr/bin/sudo` and the root-owned `agent-sudo`, and a
+process running as you could change your PATH anyway.
+
 It also adds `Path askpass /usr/local/libexec/agent-sudo/askpass` to
 `/etc/sudo.conf`, unless that file already names a different helper. On a Linux
 desktop or WSLg (a display is present) with apt, it installs `zenity` for the
 dialog, or `kdialog` if the desktop is KDE, unless one of them is already
-there. Nothing GNOME is ever installed on KDE: Plasma ships kdialog. macOS uses
-its built-in dialog, and servers use a tmux popup, so
-neither needs one.
+there (Plasma ships kdialog, so nothing GNOME is installed on KDE). macOS uses
+its built-in dialog and servers use a tmux popup, so neither needs one.
 
 The files are root-owned on purpose. If the helper were writable by your user,
 any process running as you could change it to record your password or show a
@@ -101,7 +107,8 @@ expires. The shim and `agent-sudo` don't have either limitation.
 | macOS, local | native dialog (`osascript`) |
 | Linux, KDE | kdialog: one box shows the command, a second takes the password |
 | Linux, other desktops / WSLg | zenity (one box) |
-| SSH, agent inside tmux, its session attached | tmux popup over the agent's session |
+| Linux desktop with neither | ssh-askpass, if installed |
+| agent inside tmux, its session attached, no dialog available (always over SSH) | tmux popup over the agent's session |
 | anything else | refused right away, with the command to run yourself in a terminal outside the agent |
 
 A request only ever appears where you are already looking (the agent's own
@@ -115,19 +122,31 @@ Over SSH, run agents inside tmux. A prompt in the agent's own terminal without
 tmux isn't supported (the agent's TUI owns the keyboard). See
 [TESTING.md](TESTING.md#ssh-without-tmux-findings-2026-10-15).
 
-Over SSH (`SSH_CONNECTION` set), the tmux popup comes first, so a dialog never
-opens on a screen you can't see. Override the order with
-`AGENT_SUDO_PROMPT`, e.g. `tmux` or `gui`.
+Locally, a dialog is tried first and the tmux popup second. Over SSH
+(`SSH_CONNECTION` set) the tmux popup comes first. After it, Linux tries a
+dialog only if a display is forwarded, and macOS skips its dialog entirely, so
+nothing opens on a screen you can't see. `AGENT_SUDO_PROMPT` sets the order
+instead: a space-separated list of `gui` and `tmux`, or `none` to never prompt.
+Unknown values are named in the refusal.
 
 kdialog uses two boxes because its password box turns newlines into spaces.
 The message box shows the command exactly. Qt only renders it as HTML if a
 tag appears before the first line break, and the first line is fixed text.
 zenity, on non-KDE desktops, shows the text exactly in a single box.
 
-Every prompt shows the command, run-as user, working directory, the process
-chain that asked (for example `agent-sudo <- zsh <- claude`), the terminal it
-traces back to (`claude on /dev/pts/0`), and any warnings.
-It times out after 120 seconds. Decisions (approved, denied, cancelled, but
+Every prompt shows, in this order: the run-as user, working directory, the
+process chain that asked (for example `agent-sudo <- zsh <- claude`), the
+terminal it traces back to (`claude on /dev/pts/0`), any warnings, and then the
+command. Each line of the command starts with `| `, so text inside an argument
+can't pass for part of the prompt. Invisible and direction-changing Unicode
+characters are shown as `<U+XXXX>`; non-ASCII characters and commands longer
+than 20 lines add a warning.
+
+In a dialog, Approve with your password, or Deny / close it to refuse. In the
+tmux popup, type the password and press Enter; an empty line or Ctrl-C
+refuses. Refusing prints `denied by user`; approving with an empty password
+prints `denied: no password entered`. Every prompt times out after 120
+seconds, as a refusal. Decisions (approved, denied, cancelled, but
 never the password) are logged with `logger -t agent-sudo`. On Linux, read them
 with `journalctl -t agent-sudo`; on macOS they go to the unified log, under
 the `logger` process: `/usr/bin/log show --last 1h --predicate 'process == "logger"'`.
@@ -136,9 +155,12 @@ the `logger` process: `/usr/bin/log show --last 1h --predicate 'process == "logg
 
 `rules` is a tab-separated list of `deny`/`warn` regexes; see the header of the
 file. Built-in checks in `askpass` also deny recursive `rm`/`chmod`/`chown`/
-`chgrp` and `find -delete` on `/`, `$HOME`, and top-level system directories, and
-warn on any other recursive delete. Commands inside `sh -c '...'`, `$(...)`,
-pipelines, and `;`/`&&` lists are checked too.
+`chgrp` and `find -delete` on `/`, your home directory, and top-level system
+directories, and warn on any other recursive delete. Commands inside
+`sh -c '...'`, `$(...)`, pipelines, and `;`/`&&` lists are checked too. Your home
+directory comes from the account database (`getent` / `dscl`), not the agent's
+`$HOME`. On macOS, whose disks are case-insensitive by default, names, paths
+and rules are compared ignoring case (`RM -rf /etc` is denied).
 
 Add a test to `test.sh` for every rule change; `make test-agent-sudo` runs them
 without root. Platform testing status and probe scripts: [TESTING.md](TESTING.md).
@@ -151,7 +173,10 @@ without root. Platform testing status and probe scripts: [TESTING.md](TESTING.md
 - **Doesn't:** a deliberately malicious process running as your user. Such a
   process could set its own `SUDO_ASKPASS` and show a fake dialog to collect your
   password. No askpass design prevents that. Only enter your password into prompts
-  you expect.
+  you expect. It can't use the *real* helper for this: askpass only answers the
+  setuid sudo (effective uid 0), not a program that is merely named `sudo`.
+- The repo is writable by agents, and the install runs as root, so read the
+  diff `make install-agent-sudo` shows before you approve it.
 - The rules are pattern matching, not a sandbox. A command can hide intent:
   running a script file, or obfuscated shell. Shells are flagged so you can read
   the script, but a script *file's* contents aren't shown.
@@ -166,6 +191,19 @@ without root. Platform testing status and probe scripts: [TESTING.md](TESTING.md
   tool is refused there; the `~/bin/sudo` shim sends it through `agent-sudo`.
 - The rules need an awk that rejects invalid regexes (gawk, mawk, macOS awk).
   busybox awk silently ignores them.
+
+## Uninstall
+
+```sh
+sudo rm /usr/local/bin/agent-sudo
+sudo rm -r /usr/local/libexec/agent-sudo
+sudoedit /etc/sudo.conf   # delete the "Path askpass" line and the comment above it
+rm ~/bin/sudo
+```
+
+Without `agent-sudo` installed, the shim falls back to plain sudo, but
+`make copy` puts it back; set `SKIP_AGENT_SUDO=1` so `make update` doesn't
+reinstall the rest.
 
 ## Telling agents about it
 

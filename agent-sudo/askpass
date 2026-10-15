@@ -14,6 +14,10 @@
 #                                      you own (used by the ~/bin/sudo shim)
 #   askpass --tty-prompt DIR           internal: runs inside a tmux popup
 #
+# Environment: AGENT_SUDO_PROMPT sets the prompt order ("gui tmux", "tmux",
+# "none", ...). Default: "gui tmux", or "tmux gui" when SSH_CONNECTION is set,
+# where the macOS dialog is skipped. TMUX/TMUX_PANE locate the agent's pane.
+#
 # Must be installed root-owned (make install-agent-sudo). Anything writable by
 # your user could be edited to record the password.
 #

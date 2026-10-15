@@ -1,14 +1,14 @@
 # agent-sudo: testing status and handoff notes
 
-Branch `feature/agent-sudo`. This file tracks what has been verified on which
-platform, and gives the steps for the rest. Add your results to the
+This file tracks what has been verified on which platform, and gives the
+steps for the rest. Add your results to the
 [results log](#results-log) as you go.
 
 ## Quick start on another machine
 
 ```sh
 cd ~/Projects/dotfiles
-git fetch origin && git switch feature/agent-sudo
+git fetch origin && git switch feature/agent-sudo   # until it's merged
 make test-agent-sudo               # rule tests: no root, no prompts
 sh agent-sudo/install.sh --check   # installed copy current? (no root)
 sh agent-sudo/dev/probe-argv.sh    # what the helper can see of sudo here
@@ -25,7 +25,7 @@ mawk, dash, tmux 3.4. Date: 2026-10-14.
 
 | What | How | Result |
 |---|---|---|
-| Rule tests (96 cases) | `make test-agent-sudo` with dash+gawk, dash+mawk, `bash --posix`+gawk/mawk | pass |
+| Rule tests (96 cases then; 132 since 2026-10-15) | `make test-agent-sudo` with dash+gawk, dash+mawk, `bash --posix`+gawk/mawk | pass |
 | Tests catch regressions | broke individual fixes on purpose (mutation check) | tests fail as expected |
 | The askpass parent process is sudo; `/proc` gives exact argv | stub askpass + `sudo -k -A` | yes |
 | `sudo -A` calls askpass with no display | `env -u DISPLAY -u WAYLAND_DISPLAY` | yes; without `-A` sudo refuses |
@@ -133,8 +133,7 @@ Plasma.
 
 ### Linux server over SSH (no GUI) — highest priority
 
-Steps 1, 2 and the tmux parts of 3 and 4 passed on 2026-10-15 (see results
-log). The prompt now only appears in the agent's own tmux session; see
+Steps 1-4 passed on 2026-10-15 (see results log). The prompt now only appears in the agent's own tmux session; see
 [SSH without tmux](#ssh-without-tmux-findings-2026-10-15).
 
 1. `make install` (nothing extra gets installed with no display). Without sudo
@@ -224,8 +223,9 @@ packages on the test machine don't change these results.
 
 ## SSH without tmux: findings (2026-10-15)
 
-Context: Claude Code over SSH, not in tmux, one visible terminal (the one Claude
-is running in). The goal was a prompt in that same terminal.
+Historical: the "another terminal" fallback described here was removed in
+949a0f0. Context: Claude Code over SSH, not in tmux, one visible terminal (the
+one Claude is running in). The goal was a prompt in that same terminal.
 
 **The "another terminal" fallback doesn't work in practice.** Targets come from
 `who`, which lists every login tty, including ones the user can't see:
@@ -395,13 +395,15 @@ Fixed 2026-10-15 except where noted:
 - **Open.** Cases still to add: missing/empty rules file,
   `HOME=/Users/tester`, `sudo -s rm -rf /`.
 
-### Docs (to fix)
+### Docs
 
-- macOS still described as untested (both READMEs, this file).
-- No uninstall section. SSH ordering wording imprecise. Prompt table lacks
-  ssh-askpass. Top-level README doesn't mention the `~/bin/sudo` shim.
-- Stale counts ("7/7 tmux"), branch-specific wording, Notes-for-Claude repeats
-  README.
+**Fixed 2026-10-15.** macOS no longer described as untested (the Mac session
+updated README and the macOS section). README: uninstall section, prompt order
+over SSH, ssh-askpass row, prompt layout, deny messages (`denied by user` vs
+`denied: no password entered`), tmux popup keys, `~/bin/sudo` ownership,
+install diff, home directory and case-insensitive matching. Top-level README:
+shim and install confirmation. askpass header: environment variables. Here:
+counts, branch wording, historical lead-in, Notes for Claude trimmed.
 
 ### Refactors (later)
 
@@ -432,37 +434,28 @@ behave normally. It has to be portable across macOS and Debian/Ubuntu, and work
 over SSH without a GUI. The user will not accept NOPASSWD, `timestamp_type=global`,
 or passwords passing through the agent.
 
-**Design.** See `README.md` for the user-facing version.
-- `agent-sudo` runs the rules check, then `sudo -k -A "$@"`.
-  - `-A` routes the password request to the askpass helper even with no tty or
-    display.
-  - `-k` makes every call prompt, and doesn't refresh the credential cache.
-  - It is deliberately *not* `exec`, so askpass can read the wrapper's argv when
-    sudo's argv is unreadable (expected on macOS).
-- `askpass` is a POSIX sh script with an embedded POSIX awk program.
-  - It reads sudo's argv from `/proc/$PPID/cmdline` (exact). On macOS it reads
-    the wrapper's argv exactly via JXA + `sysctl` `KERN_PROCARGS2`, checked
-    against `ps` for sudo; anything else there is refused. On Linux with
-    `/proc` hidden it falls back to `ps`, then the wrapper's `ps` args (lossy).
-    If none of those work, it refuses.
-  - It analyzes the command, then prompts. In order: a GUI dialog (osascript;
-    kdialog on KDE (two boxes) or zenity elsewhere), a tmux popup (only on a
-    client attached to the agent's own session). Nothing else: the user wants
-    requests only where they're looking or popping up in front of them, so
-    other terminals and other tmux sessions are never used. Over SSH the tmux
-    popup comes first.
-  - The user does not want GNOME libraries on KDE machines, so zenity is never
-    installed there.
-  - The SSH/headless case matters most to the user.
-  - Fail closed everywhere: unreadable argv, awk failure, malformed rules,
-    unknown cwd for relative recursive deletes.
-- Everything is installed root-owned under `/usr/local`, plus `Path askpass` in
-  `/etc/sudo.conf`. If the helper were user-writable, any same-user process
-  could rewrite it to log the password.
+**Design.** `README.md` describes it for users; what it doesn't say:
+- `agent-sudo` is deliberately *not* `exec`: on macOS askpass reads the
+  wrapper's argv (JXA + `sysctl` `KERN_PROCARGS2`) and checks it against `ps`
+  for sudo. On Linux with `/proc` hidden it falls back to `ps`, then the
+  wrapper's `ps` args (lossy).
+- askpass only answers the setuid sudo (parent effective uid 0, your real uid).
+- Prompts only where the user is looking: the desktop dialog, or a tmux popup
+  on a client attached to the agent's own session. Other terminals and other
+  tmux sessions are never used (the user's decision, 2026-10-15).
+- Fail closed: unreadable argv, awk failure, malformed rules, unknown cwd for
+  relative recursive deletes. A missing rules file only warns (root-owned, so
+  only a broken install loses it).
+- The SSH/headless case matters most to the user. No GNOME libraries on KDE
+  machines, so zenity is never installed there.
 
-**Threat model.** It protects against mistakes and runaway agents, not a
-malicious same-user process. That process could set its own `SUDO_ASKPASS` and
-show a fake dialog. Don't over-claim this.
+**Constraints for any change.** No reduction in what sudo can do, and no
+silent refusals: every refusal says why and gives the command to run yourself.
+
+**Threat model.** Mistakes and runaway agents, plus the deceptions the review
+fixed (fake sudo parent, forged display, agent `$HOME`, repo edits before an
+install). Not a malicious same-user process in general: it could set its own
+`SUDO_ASKPASS` and show a fake dialog. Don't over-claim this.
 
 **Who can ask.** The user rejected a name allowlist of agents. The rule is:
 a prompt may appear only if some ancestor of sudo has a controlling terminal
