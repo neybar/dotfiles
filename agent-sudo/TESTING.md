@@ -193,6 +193,7 @@ log). The prompt now only appears in the agent's own tmux session; see
 | 2026-10-15 | macOS 26.6.2 arm64, tmux 3.8 | `tmux-test.sh` | pass after test fix | BSD `script` exits on a FIFO stdin (`tcgetattr/ioctl: Operation not supported on socket`), so the fake client never attached and approve/deny/timeout failed (rc=3). Feeding it through `cat \| script` fixed it: 5/5 |
 | 2026-10-15 | macOS 26.6.2 arm64, Claude in tmux 3.8 (local) | Claude Bash tool: `AGENT_SUDO_PROMPT=tmux agent-sudo ...`, Deny / Approve | pass | popup over Claude's pane; deny: `denied by user`, exit 1, logged `cancelled`; approve: `id -u` printed 0, logged `approved` (so `AGENT_SUDO_PROMPT` and `TMUX` reach askpass through sudo on macOS). Without the override, local runs use the dialog first |
 | 2026-10-15 | macOS 26.6.2 arm64, Claude in tmux 3.8 (local) | Same with `TMUX`/`TMUX_PANE` removed | pass | refused in 0s, no popup, logged `no prompt available` |
+| 2026-10-15 | Ubuntu 24.04 server, SSH | Security fixes 1, 3-7 (repo copy, not installed) | pass | `test.sh` 120/120 under gawk, mawk, `bash --posix`. Against the previous askpass 13 of the new cases fail. Through the real sudo: a script named `sudo` is refused ("not the real sudo", effective uid 1000) where the old askpass reached the prompt stage; `HOME=/tmp/x` no longer unprotects your home; prompt text checked by printing it |
 
 ## macOS argv: findings (2026-10-15)
 
@@ -321,33 +322,37 @@ reading the code. Work order: security, bugs + test strength, docs, refactors.
   and no silent refusals. Every refusal prints the reason and the command to
   run yourself.
 
-### Security (to fix)
+### Security
 
-1. Caller check is only the parent's `comm` (askpass:479-485); a fake `sudo`
-   can run the real helper and collect the password. Fix: require the parent's
-   euid to be 0 and its real uid to be yours.
-2. macOS: the wrapper's exact argv (agent-controlled) is accepted if its
-   letters and digits match `ps` for sudo. A forged argv that differs only in
-   punctuation or argument boundaries passes (`~/x` vs `/x`, `sh -c 'rm -rf /etc'`
-   vs `sh -c rm -rf /etc`). Fix: compare the space-joined argv, with control
-   characters escaped the way `ps` does, to the exact `ps` string. Only spaces
-   inside arguments then stay ambiguous; flag those in the prompt.
-3. askpass PATH has user-writable dirs first on Macs (`/usr/local/bin` on Intel
-   Homebrew; `/opt/homebrew/bin` supplies tmux and timeout on Apple Silicon).
-   The Mac test machine (Apple Silicon) resolved every tool to a stock SIP copy,
-   but an Intel Mac would pick up `/usr/local/bin` first. Fix: system dirs
-   first, absolute paths for `ps awk sed tr stty osascript`, Homebrew last.
-4. Protected paths use the agent's `$HOME` (reproduced: `HOME=/tmp/x` turns
-   `rm -rf /home/<you>` into a warning). Fix: home from the passwd database
-   (`getent passwd` / `dscl`).
-5. Abbreviated long options (`--chd`, `--us=`) are misparsed (reproduced;
-   sudo 1.9.15 accepts abbreviations). Fix: resolve unique prefixes like
-   getopt_long; refuse ambiguous or unknown ones with a message.
-6. Rule gaps (reproduced): `find -delete` with no path skips the protected-cwd
-   check; `rm -rf />/dev/null` (redirect attached) only warns.
-7. Display can be forged: newlines in an argument can scroll the real command
-   away; bidi/zero-width characters can disguise it. Fix: escape newlines and
-   non-ASCII inside arguments, show run-as and warnings above the command.
+Fixed 2026-10-15 except 2 (tests in `test.sh`; results log):
+
+1. **Fixed.** Caller check was only the parent's `comm`; a fake `sudo` could
+   run the real helper and collect the password. Now the parent must have
+   effective uid 0 and your real uid.
+2. **Open (Mac).** The wrapper's exact argv (agent-controlled) is accepted if
+   its letters and digits match `ps` for sudo. A forged argv that differs only
+   in punctuation or argument boundaries passes (`~/x` vs `/x`,
+   `sh -c 'rm -rf /etc'` vs `sh -c rm -rf /etc`). Fix: compare the
+   space-joined argv, encoded the way macOS `ps` encodes it, to the exact `ps`
+   string; flag arguments containing spaces in the prompt.
+3. **Fixed.** askpass PATH is now system dirs first, `/usr/local/bin` and
+   `/opt/homebrew/bin` last (only tmux and timeout come from there). The tmux
+   popup runs `/bin/sh`. A planted tmux in a user-writable Homebrew dir is
+   still used on Macs, but that user already controls their own tmux server.
+4. **Fixed.** Protected home comes from the account database (`getent` /
+   `dscl`) when sudo calls askpass; the agent's `$HOME` is protected as well.
+   `--check` (the wrapper's pre-flight, tests) still uses `$HOME`.
+5. **Fixed.** Abbreviated long options are expanded like getopt_long
+   (`--chd` -> `--chdir`). Ambiguous or unknown ones are left alone: sudo
+   rejects them before calling askpass.
+6. **Fixed.** `find -delete` with no path checks the current directory;
+   `<` and `>` end a word. `/private/tmp` added to protected paths.
+7. **Fixed.** Prompt shows run-as, directory, origin and warnings first, then
+   the command with every line prefixed `| `, so text inside an argument can't
+   pass for part of the prompt. Invisible and bidi characters are shown as
+   `<U+XXXX>` with a warning; any non-ASCII and commands over 20 lines get a
+   warning. Newlines stay real so scripts stay readable (the Mac test checked
+   multi-line display).
 
 ### Bugs (to fix)
 
@@ -356,7 +361,7 @@ reading the code. Work order: security, bugs + test strength, docs, refactors.
 - Refusal hint drops sudo's options: `sudo -u postgres psql` suggests
   `sudo psql` (askpass:583).
 - macOS case-insensitive filesystems: `RM -rf /etc`, `CSRUTIL disable` not
-  caught; `/private/tmp` not protected.
+  caught. (`/private/tmp` fixed.)
 - Unknown `AGENT_SUDO_PROMPT` values are silently ignored.
 - Empty password gives `denied: no password entered`; docs say `denied by user`.
 

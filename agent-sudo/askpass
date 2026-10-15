@@ -21,7 +21,9 @@
 
 set -u
 set -f # never glob-expand command arguments
-PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin
+# System directories first: /usr/local/bin (Intel Homebrew) and /opt/homebrew
+# can be writable by your user, and only tmux and timeout come from there.
+PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/bin:/opt/homebrew/bin
 export PATH
 unset IFS # default splitting; "$*" joins with spaces
 
@@ -62,6 +64,36 @@ display_cmd() {
     printf '%s' "$d"
 }
 
+# Show invisible and direction-changing Unicode characters (zero-width
+# U+200B-200F, bidi U+202A-202E and U+2066-2069, BOM U+FEFF) as <U+XXXX>, so
+# they can't hide or reorder parts of the command in a dialog.
+mark_invisible() {
+    printf '%s' "$1" | LC_ALL=C awk '
+    BEGIN {
+        for (i = 128; i < 256; i++) ord[sprintf("%c", i)] = i
+        e2 = sprintf("%c", 226); ef = sprintf("%c", 239)
+    }
+    {
+        s = $0; out = ""
+        while (s != "") {
+            c = substr(s, 1, 1); n = 1; mark = ""
+            if (c == e2 || c == ef) {
+                b2 = ord[substr(s, 2, 1)]; b3 = ord[substr(s, 3, 1)]
+                if (c == e2 && b2 == 128 && ((b3 >= 139 && b3 <= 143) || (b3 >= 170 && b3 <= 174)))
+                    mark = sprintf("<U+20%02X>", b3 - 128)
+                else if (c == e2 && b2 == 129 && b3 >= 166 && b3 <= 169)
+                    mark = sprintf("<U+20%02X>", b3 - 128 + 64)
+                else if (c == ef && b2 == 187 && b3 == 191)
+                    mark = "<U+FEFF>"
+                if (mark != "") n = 3
+            }
+            out = out (mark != "" ? mark : c)
+            s = substr(s, n + 1)
+        }
+        print out
+    }'
+}
+
 # Record the value of a sudo option that matters for the prompt or analysis.
 optval() {
     case $1 in
@@ -70,22 +102,44 @@ optval() {
     esac
 }
 
+# sudo's long options; those in the first list take a value.
+LONG_WITH_ARG="auth-type chdir chroot close-from command-timeout group host login-class other-user prompt role type user"
+LONG_NO_ARG="askpass background bell edit help list login non-interactive preserve-env preserve-groups remove-timestamp reset-timestamp set-home shell stdin validate version"
+
+# Expand an abbreviated long option the way getopt_long does (sudo accepts
+# "--chd" for "--chdir"). Prints the full name, or $1 unchanged if it is
+# unknown or ambiguous (sudo itself rejects those).
+long_opt() {
+    found= count=0
+    for o in $LONG_WITH_ARG $LONG_NO_ARG; do
+        [ "$o" = "$1" ] && { printf '%s' "$o"; return; }
+        case $o in "$1"*) found=$o count=$((count + 1)) ;; esac
+    done
+    if [ "$count" -eq 1 ]; then printf '%s' "$found"; else printf '%s' "$1"; fi
+}
+
 # Parse sudo's own options from "$@". Sets SKIP (number of args to drop before
-# the command), RUNAS, MODE (letters: s=shell, i=login shell, e=edit), and CWD
-# when -D/--chdir is given.
+# the command), RUNAS, and CWD when -D/--chdir is given. Appends to MODE
+# (letters: s=shell, i=login shell, e=edit); callers initialize it.
 parse_sudo_opts() {
     SKIP=0 RUNAS=root
     while [ $# -gt 0 ]; do
         a=$1 need=
         case $a in
             --) SKIP=$((SKIP + 1)); return ;;
-            --*=*) optval "${a%%=*}" "${a#*=}" ;;
-            --user | --other-user | --group | --host | --prompt | --close-from | --chdir | --chroot | --role | --type | --command-timeout | --auth-type | --login-class)
-                need=$a ;;
-            --shell) MODE="${MODE}s" ;;
-            --login) MODE="${MODE}i" ;;
-            --edit) MODE="${MODE}e" ;;
-            --*) ;;
+            --?*)
+                name=${a#--} name=${name%%=*}
+                name=--$(long_opt "$name")
+                case $a in
+                    --*=*) optval "$name" "${a#*=}" ;;
+                    *)
+                        case " $LONG_WITH_ARG " in *" ${name#--} "*) need=$name ;; esac
+                        case $name in
+                            --shell) MODE="${MODE}s" ;;
+                            --login) MODE="${MODE}i" ;;
+                            --edit) MODE="${MODE}e" ;;
+                        esac ;;
+                esac ;;
             -?*)
                 f=${a#-}
                 while [ -n "$f" ]; do
@@ -143,7 +197,7 @@ function emit(level, msg) {
     seen[level, msg] = 1
     print level "\t" msg
 }
-function check_segment(   x, j, w, tok, rec, endopts, hits, tgts, del) {
+function check_segment(   x, j, w, tok, rec, endopts, hits, tgts, del, np) {
     for (x = 1; x <= m; x++) {
         w = base(seg[x])
         if (w == "rm" || w == "chmod" || w == "chown" || w == "chgrp") {
@@ -171,8 +225,12 @@ function check_segment(   x, j, w, tok, rec, endopts, hits, tgts, del) {
             }
             j = x + 1
             while (j <= m && (seg[j] ~ /^-([HLP]|O[0-9]*)$/ || seg[j] == "-D")) j += (seg[j] == "-D") ? 2 : 1
-            for (; j <= m && seg[j] !~ /^[-!]/; j++)
+            for (np = 0; j <= m && seg[j] !~ /^[-!]/; j++) {
+                np++
                 if (protected(seg[j])) hits = hits " " seg[j]
+            }
+            # No starting path: GNU find searches the current directory.
+            if (np == 0 && protected(".")) hits = " . (current directory)"
             if (del && hits != "") emit("deny", "find deleting under a protected path:" hits)
             else if (del) emit("warn", "find deletes files")
         }
@@ -182,9 +240,11 @@ BEGIN {
     raw = ""; first = 1
     while ((getline l) > 0) { raw = first ? l : raw "\n" l; first = 0 }
     home = ENVIRON["AS_HOME"]; cwd = ENVIRON["AS_CWD"]; rules = ENVIRON["AS_RULES"]
-    n = split("/ /bin /boot /dev /etc /home /lib /lib32 /lib64 /libx32 /media /mnt /opt /proc /root /run /sbin /snap /srv /sys /tmp /usr /usr/bin /usr/lib /usr/local /usr/sbin /usr/share /var /var/lib /var/log /var/root /Applications /Library /System /Users /Volumes /cores /private /private/etc /private/var ~user ?relative", a, " ")
+    envhome = ENVIRON["AS_ENVHOME"]
+    n = split("/ /bin /boot /dev /etc /home /lib /lib32 /lib64 /libx32 /media /mnt /opt /proc /root /run /sbin /snap /srv /sys /tmp /usr /usr/bin /usr/lib /usr/local /usr/sbin /usr/share /var /var/lib /var/log /var/root /Applications /Library /System /Users /Volumes /cores /private /private/etc /private/tmp /private/var ~user ?relative", a, " ")
     for (i = 1; i <= n; i++) P[a[i]] = 1
     if (home != "") P[canon(home)] = 1
+    if (envhome != "") P[canon(envhome)] = 1
 
     # Normalized copy: drop quoting, split on shell command separators.
     s = raw
@@ -193,7 +253,8 @@ BEGIN {
     gsub(/"/, "", s)
     gsub(sq, "", s)
     gsub(/\$\(|`|&&|\|\||[;&|\n]/, " ; ", s)
-    gsub(/[(){}\t]/, " ", s)
+    # Redirects end a word even without a space: "rm -rf />/dev/null".
+    gsub(/[(){}<>\t]/, " ", s)
     norm = s
 
     r = -1; lineno = 0
@@ -219,13 +280,27 @@ BEGIN {
     check_segment()
 }'
 
+# Your home directory from the account database. $HOME comes from the agent's
+# environment, so it alone can't decide what is protected.
+account_home() {
+    h=
+    if command -v getent >/dev/null 2>&1; then
+        h=$(getent passwd "$(id -u)" | cut -d: -f6)
+    elif [ "$(uname -s)" = Darwin ]; then
+        h=$(dscl . -read "/Users/$(id -un)" NFSHomeDirectory 2>/dev/null |
+            sed -n 's/^NFSHomeDirectory: //p')
+    fi
+    case $h in /*) printf '%s' "$h" ;; *) printf '%s' "${HOME:-}" ;; esac
+}
+
 # Analyze the command in "$@" (sudo options already removed). Sets DENIES and
-# WARNS to newline-separated reasons. Uses MODE, CWD, RULES_FILE.
+# WARNS to newline-separated reasons. Uses MODE, CWD, RULES_FILE, USER_HOME;
+# $HOME is protected too when it differs.
 analyze() {
     # The command goes through stdin: an environment variable is capped at
     # 128 KB on Linux, and a failed awk must not mean "no findings".
-    out=$(printf '%s' "$*" | AS_HOME="${HOME:-}" AS_CWD="$CWD" AS_RULES="$RULES_FILE" \
-        awk -v sq="'" "$AWK_PROG")
+    out=$(printf '%s' "$*" | AS_HOME="$USER_HOME" AS_ENVHOME="${HOME:-}" AS_CWD="$CWD" \
+        AS_RULES="$RULES_FILE" awk -v sq="'" "$AWK_PROG")
     st=$?
     [ "$st" -eq 0 ] || out="$out${NL}deny${TAB}rule analysis failed (awk exit $st)"
     case $MODE in
@@ -240,7 +315,9 @@ analyze() {
 }
 
 check_mode() {
-    CWD=$(pwd) MODE=
+    # Pre-flight only (agent-sudo, tests): sudo's askpass call re-checks with
+    # the account's home directory.
+    CWD=$(pwd) MODE= USER_HOME=${HOME:-}
     while [ $# -gt 0 ]; do
         case $1 in
             --rules) RULES_FILE=$2; shift 2 ;;
@@ -370,8 +447,8 @@ prompt_gui() {
     return 2
 }
 
-# Shared by the tmux and terminal prompts: a private request directory with
-# the message and a fifo for the answer. Sets dir and watchdog.
+# For the tmux popup: a private request directory with the message and a
+# fifo for the answer. Sets dir and watchdog.
 new_request() {
     dir=$(mktemp -d /tmp/agent-sudo.XXXXXX) || return 2
     case $dir in *[!A-Za-z0-9._/-]*) rm -rf "$dir"; return 2 ;; esac
@@ -410,10 +487,10 @@ prompt_tmux() {
     client=$(tmux list-clients -t "$session" -F '#{client_activity} #{client_name}' 2>/dev/null |
         sort -rn | head -1 | cut -d' ' -f2)
     [ -n "$client" ] || return 2
-    target="-c $client -t $TMUX_PANE"
     new_request "$1" || return 2
+    # /bin/sh, not whatever "sh" the tmux server's PATH finds first.
     (
-        tmux display-popup $target -E -w 90% -h 75% "sh $SELF --tty-prompt $dir"
+        tmux display-popup -c "$client" -t "$TMUX_PANE" -E -w 90% -h 75% "/bin/sh $SELF --tty-prompt $dir"
         [ -e "$dir/started" ] || printf 'error\n' 1<>"$dir/reply"
     ) >/dev/null 2>&1 </dev/null &
     await_reply
@@ -421,7 +498,7 @@ prompt_tmux() {
         ok:*) printf '%s\n' "${reply#ok:}" ;;
         error) return 2 ;;
         timeout)
-            tmux display-popup -C $target >/dev/null 2>&1
+            tmux display-popup -C -c "$client" -t "$TMUX_PANE" >/dev/null 2>&1
             return 1 ;;
         *) return 1 ;;
     esac
@@ -530,7 +607,16 @@ prompt_mode() {
         sudo | sudoedit) ;;
         *) die "refusing: parent process is '${sudo_comm:-unknown}', not sudo" ;;
     esac
+    # Any program can be named sudo; only the setuid one runs as root on your
+    # behalf. Otherwise the real prompt could show a made-up command and hand
+    # the password to whoever started it.
+    read -r euid ruid <<EOF
+$(ps -o uid= -o ruid= -p "$sudo_pid" 2>/dev/null)
+EOF
+    [ "$euid" = 0 ] && [ "$ruid" = "$(id -u)" ] ||
+        die "refusing: parent process is not the real sudo (effective uid ${euid:-?}, real uid ${ruid:-?})"
     parent=$(ps -o ppid= -p "$sudo_pid" 2>/dev/null | tr -d ' ')
+    USER_HOME=$(account_home)
 
     # sudo's argv, exactly: from /proc on Linux; on macOS from the agent-sudo
     # wrapper (see mac_argv). One argument per line, newlines inside an
@@ -613,12 +699,21 @@ EOF
         exit 1
     fi
 
+    # What you see must match what runs: details and warnings first, so a long
+    # command can't push them out of view, then the command with every line
+    # marked, so text inside an argument can't pass for part of the prompt.
+    shown=$(mark_invisible "${cmd:-(none)}")
+    lines=$(printf '%s\n' "$shown" | wc -l | tr -d ' ')
+    [ "$shown" = "${cmd:-(none)}" ] ||
+        WARNS="${WARNS}${WARNS:+$NL}contains invisible or direction-changing characters (shown as <U+XXXX>)"
+    [ "$(printf '%s' "$cmd" | LC_ALL=C tr -d '\000-\177' | wc -c | tr -d ' ')" -eq 0 ] ||
+        WARNS="${WARNS}${WARNS:+$NL}contains non-ASCII characters: look-alike letters are possible"
+    [ "$lines" -le 20 ] ||
+        WARNS="${WARNS}${WARNS:+$NL}long command ($lines lines): read all of it before approving"
+
     # The first line must stay fixed text: kdialog/Qt decide whether to render
     # HTML by looking for a tag before the first line break.
     text="A process without a terminal is asking to run a command with sudo.
-
-Command:
-${cmd:-(none)}
 
 Run as:        $RUNAS
 Directory:     ${CWD:-unknown}
@@ -630,7 +725,11 @@ Started from:  $ORIGIN"
 WARNINGS:
 $(printf '%s\n' "$WARNS" | sed 's/^/  * /')"
     fi
+    if [ "$lines" -gt 1 ]; then label="Command ($lines lines):"; else label="Command:"; fi
     text="$text
+
+$label
+$(printf '%s\n' "$shown" | sed 's/^/| /')
 
 Enter your password to approve. Deny or close to refuse."
     text=$(sanitize "$text")

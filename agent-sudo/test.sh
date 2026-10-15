@@ -79,6 +79,19 @@ t deny --chdir=/ rm -r usr
 t deny -hlocalhost chown -R nobody /etc
 t deny --cwd '' rm -rf build
 t deny --cwd '' chown -R nobody ..
+t deny --cwd / find -delete
+t deny --cwd /etc find -L -delete
+t deny sh -c 'rm -rf />/dev/null'
+t deny sh -c 'rm -rf /</dev/null'
+t deny rm -rf /private/tmp
+t deny rm -rf /etc/
+t deny rm / -rf
+
+# Abbreviated long options, as sudo (getopt_long) accepts them
+t deny --chd /etc rm -rf .
+t deny --chd=/etc rm -r .
+t deny --us root rm -rf /
+t warn --she
 
 # Disks and other never-allowed commands
 t deny mkfs.ext4 /dev/sda1
@@ -136,6 +149,8 @@ t allow --cwd '' rm build
 t warn rm -rf '~root/projects/x'
 t allow chown -R tester ../sibling
 t allow chown -R nobody /mnt/c/Users/tester/proj
+t allow find -name '*.conf' -print
+t warn --cwd /home/tester/proj/build find -delete
 
 # Broken rules files fail closed
 tmp=$(mktemp -d)
@@ -181,6 +196,33 @@ if [ -x /usr/bin/sudo ]; then
         "$tmp/agent-sudo" sh -c ": \"a b\"$nl: two" '' arg
     s "sudo : 'it'\\''s' 'tab	x'" "$tmp/agent-sudo" -u nobody -- : "it's" 'tab	x'
     s "agent-sudo: denied: recursive chown" "$tmp/agent-sudo" chown -R nobody /etc
+    # The agent's $HOME doesn't decide what is protected: the wrapper's
+    # pre-flight uses it, sudo's askpass call uses the account's home.
+    myhome=$(eval "echo ~$(id -un)")
+    s "denied: recursive chown on a protected path: $myhome" \
+        env HOME=/tmp/agent-sudo-test "$tmp/agent-sudo" chown -R nobody "$myhome"
+    # A process merely named sudo can't use the helper.
+    mkdir "$tmp/fake"
+    printf '#!/bin/sh\n%s "Password:"\n' "$tmp/askpass" >"$tmp/fake/sudo"
+    chmod +x "$tmp/fake/sudo"
+    s "parent process is not the real sudo" "$tmp/fake/sudo"
+    # What the prompt shows: a copy that prints the text instead of asking.
+    sed 's/^get_password() {/get_password() { printf "%s\\n" "$1" >\&2; return 1; }\nget_password_unused() {/' \
+        "$tmp/askpass" >"$tmp/show-askpass"
+    chmod +x "$tmp/show-askpass"
+    show() { env SUDO_ASKPASS="$tmp/show-askpass" /usr/bin/sudo -k -A "$@"; }
+    [ "$(uname -s)" = Darwin ] && show() {
+        sed "s|^ASKPASS=.*|ASKPASS=$tmp/show-askpass|" "$tmp/agent-sudo" >"$tmp/show-wrapper"
+        sed "s|^WRAPPER=.*|WRAPPER=$tmp/show-wrapper|" "$tmp/askpass" >"$tmp/show-askpass.new"
+        sed 's/^get_password() {/get_password() { printf "%s\\n" "$1" >\&2; return 1; }\nget_password_unused() {/' \
+            "$tmp/show-askpass.new" >"$tmp/show-askpass"
+        sh "$tmp/show-wrapper" "$@"
+    }
+    s "Command (2 lines):$nl| sh -c 'echo one$nl| Command:'" show sh -c "echo one${nl}Command:"
+    s "| : 'a<U+202E>b'" show : "$(printf 'a\342\200\256b')"
+    s "invisible or direction-changing characters" show : "$(printf 'a\342\200\213b')"
+    s "contains non-ASCII characters" show : "$(printf 'caf\303\251')"
+    s "Started from:" show true
     if [ "$(uname -s)" = Darwin ]; then
         # Only the wrapper's argv is exact on macOS; plain sudo -A is refused.
         s "cannot read the exact command" env SUDO_ASKPASS="$tmp/askpass" /usr/bin/sudo -k -A : 'a b'
