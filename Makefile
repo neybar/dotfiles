@@ -79,13 +79,16 @@ copy:
 install: copy bootstrap-omz sync-agent-sudo
 	# @/bin/zsh ~/.zshrc
 	@vim +PlugUpdate +qall
-	@echo "\033[0;33mConfiguring git user info...\033[0m"
-	@read -p "Git user name: " GIT_NAME && \
-	read -p "Git user email: " GIT_EMAIL && \
-	git config --global user.name "$$GIT_NAME" && \
-	git config --global user.email "$$GIT_EMAIL" && \
-	git config --global include.path $(CURDIR)/.gitconfig && \
-	echo "\033[0;32mGit configured: $$GIT_NAME <$$GIT_EMAIL>\033[0m"
+	@# Prompt only for git user info that isn't set yet.
+	@if ! git config --global user.name >/dev/null; then \
+		read -p "Git user name: " GIT_NAME && git config --global user.name "$$GIT_NAME"; \
+	fi
+	@if ! git config --global user.email >/dev/null; then \
+		read -p "Git user email: " GIT_EMAIL && git config --global user.email "$$GIT_EMAIL"; \
+	fi
+	@git config --global --get-all include.path | grep -qxF "$(CURDIR)/.gitconfig" || \
+		git config --global --add include.path "$(CURDIR)/.gitconfig"
+	@echo "\033[0;32mGit user: $$(git config --global user.name) <$$(git config --global user.email)>\033[0m"
 	@echo "\033[0;31mCall 'source ~/.zshrc' to get new changes\033[0m"
 
 
