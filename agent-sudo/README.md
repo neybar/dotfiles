@@ -49,7 +49,7 @@ Claude Code), it stops and tells you to run `make install-agent-sudo` in a
 terminal.
 
 ```sh
-make install-agent-sudo                # install/reinstall now (runs tests first)
+make install-agent-sudo                # install now if out of date (runs tests first)
 sh agent-sudo/install.sh --check       # is the installed copy current?
 SKIP_AGENT_SUDO=1 make update          # skip it (e.g. no sudo on this machine)
 ```

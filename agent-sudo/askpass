@@ -861,7 +861,7 @@ EOF
                 case $m in gui | tmux | none) ;; *) bad="$bad${bad:+ }$m" ;; esac
             done
             [ -z "$bad" ] || printf 'agent-sudo: AGENT_SUDO_PROMPT has unknown value(s): %s (use gui, tmux or none, separated by spaces)\n' "$(sanitize "$bad")" >&2
-            die "no way to ask for approval: no GUI dialog, and the agent is not in an attached tmux session. Run the agent inside tmux, or run this in a terminal outside the agent (not with ! in Claude Code): $(sanitize "$hint")" ;;
+            die "no way to ask for approval: no GUI dialog, and the agent is not in an attached tmux session. Run the agent inside tmux, or run this in a terminal outside the agent (not with ! in Claude Code): $(mark_invisible "$(sanitize "$hint")")" ;;
         *)
             log "cancelled: $logcmd"
             die "denied by user" ;;

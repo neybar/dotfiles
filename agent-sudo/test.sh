@@ -219,6 +219,9 @@ if [ -x /usr/bin/sudo ]; then
         "$tmp/agent-sudo" sh -c ": \"a b\"$nl: two" '' arg
     s "&& sudo -u nobody -- : 'it'\\''s' 'tab	x'" "$tmp/agent-sudo" -u nobody -- : "it's" 'tab	x'
     s "agent-sudo: denied: recursive chown" "$tmp/agent-sudo" chown -R nobody /etc
+    # The "run it yourself" hint is meant to be copied: invisible characters
+    # in it are marked too.
+    s "sudo : 'a<U+202E>b'" "$tmp/agent-sudo" : "$(printf 'a\342\200\256b')"
     # The agent's $HOME doesn't decide what is protected: the wrapper's
     # pre-flight uses it, sudo's askpass call uses the account's home.
     myhome=$(eval "echo ~$(id -un)")

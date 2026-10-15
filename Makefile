@@ -112,8 +112,11 @@ sync-agent-sudo:
 # Install or reinstall (runs the tests first). Shows the changes and asks
 # before running anything as root.
 install-agent-sudo: test-agent-sudo
-	@sh agent-sudo/install.sh --review
-	@if [ "$$(uname -s)" = Linux ] && [ -n "$$DISPLAY$$WAYLAND_DISPLAY" ]; then \
+	@if sh agent-sudo/install.sh --check >/dev/null; then \
+		echo "agent-sudo: up to date; nothing to install"; \
+	elif ! sh agent-sudo/install.sh --review; then \
+		exit 1; \
+	elif [ "$$(uname -s)" = Linux ] && [ -n "$$DISPLAY$$WAYLAND_DISPLAY" ]; then \
 		sudo sh agent-sudo/install.sh --gui "$$XDG_CURRENT_DESKTOP"; \
 	else \
 		sudo sh agent-sudo/install.sh; \
