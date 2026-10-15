@@ -198,6 +198,7 @@ Steps 1-4 passed on 2026-10-15 (see results log). The prompt now only appears in
 | 2026-10-15 | macOS 26.6.2 arm64 | `LC_ALL=C ps -ww -o args=` encoding, all 255 bytes plus 30 random byte strings | mapped | tab `\011`, newline `\012`, other control bytes `^X`, DEL `^?`, printable ASCII as is (`\` and `^` not escaped), 128-159 `M^X`, 160 `\240`, 161-254 `M-x`, 255 `M^?`, arguments joined by one space (a trailing `''` leaves a trailing space). No byte's form depends on its neighbours. The new `mac_ps_args` matches `ps` exactly on all cases |
 | 2026-10-15 | macOS 26.6.2 arm64 | `test.sh` after security fix 2 (repo copy) | pass | 140/140 with case folding always on (`RM -rf /etc`, `CSRUTIL disable`, `rm -rf /ETC` denied; BWK `tolower()` and the for-in copy fine); `mark_invisible` cases (U+202E, U+200B) pass. New Darwin cases: punctuation-only forgery (`: ~/x` vs `: /x`) and trailing-`''` forgery refused; spaces and `\011`/`^A` warnings shown. Mutants: the old letters-and-digits check fails the `~/x` case; no space warning fails its case. Fake `sudo` on Darwin now uses `exec -a sudo`, so it reaches the uid check |
 | 2026-10-15 | macOS 26.6.2 arm64, tmux 3.8 | `dev/tmux-test.sh` at 856ec39, BSD `/usr/bin/script` | pass | 5/5 (approve, deny, timeout, outside-tmux, detached-session), each popup counted through the harness log; 0 leftover request dirs |
+| 2026-10-15 | macOS 26.6.2 arm64 | `test.sh` after the escape recheck (repo copy) | pass | 143/143. A wrapper claiming `sh -c 'exit 0; rm -rf\011/etc'` while sudo gets a real tab, and the same with `\012` for a newline, are denied (`recursive rm on a protected path: /etc`); before, both got only warnings. Real commands exit before the `rm`. `mac_ps_decode` gives a valid reading of `ps` (re-encodes to the same text) for all 255 bytes and 300 random strings. Mutants: no recheck fails 5 cases; no `\011`-first decoding fails the tab case |
 
 ## macOS argv: findings (2026-10-15)
 
@@ -329,12 +330,12 @@ reading the code. Work order: security, bugs + test strength, docs, refactors.
 
 ### Security
 
-Fixed 2026-10-15 (tests in `test.sh`; results log); 2 has a limit on macOS:
+Fixed 2026-10-15 (tests in `test.sh`; results log):
 
 1. **Fixed.** Caller check was only the parent's `comm`; a fake `sudo` could
    run the real helper and collect the password. Now the parent must have
    effective uid 0 and your real uid.
-2. **Fixed (Mac), with a limit.** The wrapper's exact argv (agent-controlled)
+2. **Fixed (Mac).** The wrapper's exact argv (agent-controlled)
    was accepted if its letters and digits matched `ps` for sudo, so `~/x` vs
    `/x` passed. Now `mac_ps_args` encodes `sudo -k -A ARGS` the way
    `LC_ALL=C ps -o args=` does (table in the results log) and it must equal
@@ -342,12 +343,14 @@ Fixed 2026-10-15 (tests in `test.sh`; results log); 2 has a limit on macOS:
    the prompt: an argument containing a space ("where one argument ends and
    the next begins can't be cross-checked"), and literal text like `\011`,
    `^A` or `M-a`, which looks the same as the tab, control or non-ASCII byte
-   it stands for. **Limit:** a boundary forgery in the other direction gets no
-   warning: the wrapper claims `sh -c rm -rf /etc` (no argument has a space)
-   while sudo got `sh -c 'rm -rf /etc'`. The prompt shows the same words, but
-   the rules check the claimed argv, so a deny rule can be skipped and it goes
-   to the prompt. Only reading sudo's own argv would close this, and macOS
-   refuses that (`EINVAL`, see "macOS argv").
+   it stands for. Boundaries don't change the rules' verdict: `analyze` reads
+   the space-joined `"$*"`, which the exact match makes identical (a claimed
+   `sh -c rm -rf /etc` and a real `sh -c 'rm -rf /etc'` both deny). The escape
+   ambiguity did: a claimed literal `\011` hid the tab in sudo's
+   `rm -rf<TAB>/etc`. So `mac_recheck` also analyzes the command with every
+   escape-like sequence decoded (`mac_ps_decode`, `\011` `\012` `\240` first)
+   and keeps the union of denies and warnings. It reads too much where the
+   text really was literal, which can only add findings.
 3. **Fixed.** askpass PATH is now system dirs first, `/usr/local/bin` and
    `/opt/homebrew/bin` last (only tmux and timeout come from there). The tmux
    popup runs `/bin/sh`. A planted tmux in a user-writable Homebrew dir is

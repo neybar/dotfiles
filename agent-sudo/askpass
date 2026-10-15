@@ -628,6 +628,45 @@ mac_ps_args() {
         END { printf "%s", substr(out, 1, length(out) - 1) }'
 }
 
+# The reverse of mac_ps_args for one string: every escape-like sequence read
+# as the byte it can stand for. \011 \012 \240 first, so "M-\011" can't hide a
+# tab as byte 220 followed by "011". Reads too much where the text was
+# literal, which can only add findings.
+mac_ps_decode() {
+    printf '%s' "$1" | LC_ALL=C awk '
+        BEGIN { for (i = 1; i < 128; i++) ord[sprintf("%c", i)] = i }
+        {
+            gsub(/\\011/, "\t"); gsub(/\\012/, "\n"); gsub(/\\240/, sprintf("%c", 160))
+            s = $0; out = ""
+            while (s != "") {
+                m = substr(s, 1, 1) == "M" && substr(s, 2, 1) ~ /[-^]/ ? 128 : 0
+                t = m ? substr(s, 2) : s
+                c = substr(t, 2, 1); n = -1
+                if (t ~ /^\^\?/) n = 127
+                else if (t ~ /^\^[@-_]/ && (m || c !~ /[@IJ]/)) n = ord[c] - 64
+                else if (m && t ~ /^-[!-~]/) n = ord[c]
+                if (n >= 0) { out = out sprintf("%c", m + n); s = substr(t, 3) }
+                else { out = out substr(s, 1, 1); s = substr(s, 2) }
+            }
+            printf "%s%s", sep, out; sep = "\n"
+        }'
+}
+
+# The command as sudo may really have it, analyzed as well: ps can't tell a
+# tab from a literal "\011" (see mac_ps_args), so a claimed "\011" must not
+# hide the "rm -rf<TAB>/etc" sudo got. Keeps the union of the findings.
+mac_recheck() {
+    decoded=$(mac_ps_decode "$*"; echo .)
+    decoded=${decoded%.}
+    if [ "$decoded" != "$*" ]; then
+        d=$DENIES w=$WARNS
+        analyze "$decoded"
+        DENIES=$(printf '%s\n%s\n' "$d" "$DENIES" | awk 'NF && !seen[$0]++')
+        WARNS=$(printf '%s\n%s\n' "$w" "$WARNS" | awk 'NF && !seen[$0]++')
+    fi
+    [ -z "${ARGV_WARNS:-}" ] || WARNS="${WARNS}${WARNS:+$NL}$ARGV_WARNS"
+}
+
 # ---- main: called by sudo ---------------------------------------------------
 
 prompt_mode() {
@@ -739,7 +778,7 @@ EOF
     chain=$CHAIN
 
     analyze "$@"
-    [ -z "${ARGV_WARNS:-}" ] || WARNS="${WARNS}${WARNS:+$NL}$ARGV_WARNS"
+    [ "$(uname -s)" != Darwin ] || mac_recheck "$@"
 
     if [ -n "$DENIES" ]; then
         log "denied by rules: $logcmd ($(printf '%s' "$DENIES" | tr '\n' ';'))"

@@ -262,6 +262,18 @@ if [ -x /usr/bin/sudo ]; then
         s "argument with spaces" show echo 'a b'
         s "can't be told apart" show : 'a\011b'
         s "can't be told apart" show : '^A'
+        # ps shows a tab or newline as \011 / \012, so a wrapper may claim the
+        # literal text. Rules must also see what sudo may really have; the
+        # real commands exit before the rm, even where sudo needs no password.
+        sed "s|^WRAPPER=.*|WRAPPER=$tmp/esc-wrapper|" "$tmp/askpass" >"$tmp/esc-askpass"
+        printf '#!/bin/sh\nPATH=/usr/bin:/bin\nSUDO_ASKPASS=%s sudo -k -A sh -c "$REAL"\n' \
+            "$tmp/esc-askpass" >"$tmp/esc-wrapper"
+        chmod +x "$tmp/esc-askpass" "$tmp/esc-wrapper"
+        s "denied: recursive rm on a protected path: /etc" env REAL="$(printf 'exit 0; rm -rf\t/etc')" \
+            "$tmp/esc-wrapper" sh -c 'exit 0; rm -rf\011/etc'
+        s "denied: recursive rm on a protected path: /etc" env REAL="exit 0${nl}rm -rf /etc" \
+            "$tmp/esc-wrapper" sh -c 'exit 0\012rm -rf /etc'
+        s "no way to ask for approval" env REAL='exit 0' "$tmp/esc-wrapper" sh -c 'exit 0'
     else
         s "sudo : 'a b'" env SUDO_ASKPASS="$tmp/askpass" /usr/bin/sudo -k -A : 'a b'
     fi
