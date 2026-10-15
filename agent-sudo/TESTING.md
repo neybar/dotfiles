@@ -47,8 +47,8 @@ mawk, dash, tmux 3.4. Date: 2026-10-14.
 
 ### macOS
 
-Steps 1, 2, 4–8 passed on 2026-10-15 (macOS 26.6.2, Apple Silicon; see results
-log). Left: step 3 (tmux), step 9 (SSH), step 10 (Touch ID; not enabled on the
+Steps 1–8 passed on 2026-10-15 (macOS 26.6.2, Apple Silicon; see results
+log). Left: step 9 (SSH), step 10 (Touch ID; not enabled on the
 test machine), the `setsid`-free cron-like check in step 5, and an Intel Mac.
 
 1. `make test-agent-sudo`. This exercises macOS `/bin/sh` (bash 3.2) and BWK
@@ -190,6 +190,9 @@ log). The prompt now only appears in the agent's own tmux session; see
 | 2026-10-15 | macOS 26.6.2 arm64 (iTerm) | Terminal `sudo -k; sudo true` | pass | normal text prompt, no dialog |
 | 2026-10-15 | macOS 26.6.2 arm64 (iTerm) | `agent-sudo true` from a terminal | pass | dialog shown |
 | 2026-10-15 | macOS 26.6.2 arm64 (iTerm) | Dialog left open 120s | pass | closed itself; `denied by user` |
+| 2026-10-15 | macOS 26.6.2 arm64, tmux 3.8 | `tmux-test.sh` | pass after test fix | BSD `script` exits on a FIFO stdin (`tcgetattr/ioctl: Operation not supported on socket`), so the fake client never attached and approve/deny/timeout failed (rc=3). Feeding it through `cat \| script` fixed it: 5/5 |
+| 2026-10-15 | macOS 26.6.2 arm64, Claude in tmux 3.8 (local) | Claude Bash tool: `AGENT_SUDO_PROMPT=tmux agent-sudo ...`, Deny / Approve | pass | popup over Claude's pane; deny: `denied by user`, exit 1, logged `cancelled`; approve: `id -u` printed 0, logged `approved` (so `AGENT_SUDO_PROMPT` and `TMUX` reach askpass through sudo on macOS). Without the override, local runs use the dialog first |
+| 2026-10-15 | macOS 26.6.2 arm64, Claude in tmux 3.8 (local) | Same with `TMUX`/`TMUX_PANE` removed | pass | refused in 0s, no popup, logged `no prompt available` |
 
 ## macOS argv: findings (2026-10-15)
 

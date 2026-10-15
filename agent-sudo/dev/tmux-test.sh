@@ -34,7 +34,8 @@ grep -q -- '--harness' "$H" || { echo "harness patch failed"; exit 1; }
 attach() {
     rm -f "$T/in"; mkfifo "$T/in"
     if [ "$(uname -s)" = Darwin ]; then
-        script -q /dev/null sh -c "$1" <"$T/in" >"$T/client.out" 2>&1 &
+        # BSD script fails on a FIFO stdin (EOPNOTSUPP); a pipe is fine.
+        cat "$T/in" | script -q /dev/null sh -c "$1" >"$T/client.out" 2>&1 &
     else
         script -qfc "$1" /dev/null <"$T/in" >"$T/client.out" 2>&1 &
     fi
