@@ -5,6 +5,9 @@
 # Needs no root and changes nothing.  Usage: sh agent-sudo/dev/probe-argv.sh
 
 set -u
+# The real sudo: a ~/bin/sudo shim would route this to the installed agent-sudo.
+SUDO=/usr/bin/sudo
+[ -x "$SUDO" ] || SUDO=/bin/sudo
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 
@@ -27,9 +30,9 @@ exit 1
 EOF
 chmod +x "$tmp/stub"
 
-SUDO_ASKPASS="$tmp/stub" sudo -k -A -- sh -c 'echo "a b"' arg2 2>/dev/null
+SUDO_ASKPASS="$tmp/stub" "$SUDO" -k -A -- sh -c 'echo "a b"' arg2 2>/dev/null
 cat "$tmp/out" 2>/dev/null || echo "askpass stub never ran (sudo didn't call it)"
-echo "sudo:                     $(sudo -V 2>/dev/null | head -1)"
+echo "sudo:                     $("$SUDO" -V 2>/dev/null | head -1)"
 echo "awk:                      $(awk --version 2>&1 | head -1)"
 echo "tmux:                     $(tmux -V 2>/dev/null || echo none)"
 for p in zenity kdialog ssh-askpass osascript; do

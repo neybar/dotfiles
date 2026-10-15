@@ -10,6 +10,10 @@
 set -u
 repo=$(cd "$(dirname "$0")/../.." && pwd)
 command -v setsid >/dev/null 2>&1 || { echo "needs setsid (Linux)"; exit 1; }
+# The real sudo: a ~/bin/sudo shim would route the askpass cases to the
+# installed agent-sudo instead of these copies.
+SUDO=/usr/bin/sudo
+[ -x "$SUDO" ] || SUDO=/bin/sudo
 T=$(mktemp -d)
 trap 'rm -rf "$T"' EXIT
 
@@ -48,9 +52,9 @@ expect "--from-terminal, detached" "no" \
 # askpass via sudo: allowed origin gets to the prompt stage ("no way to ask"
 # because prompts are disabled); detached is refused before that.
 expect "askpass via sudo, here" "no way to ask" \
-    "$(SUDO_ASKPASS=$T/askpass sudo -k -A true 2>&1)"
+    "$(SUDO_ASKPASS=$T/askpass $SUDO -k -A true 2>&1)"
 expect "askpass via sudo, detached" "not started from your terminal" \
-    "$(detached "SUDO_ASKPASS=$T/askpass sudo -k -A true")"
+    "$(detached "SUDO_ASKPASS=$T/askpass $SUDO -k -A true")"
 
 # shim: here it routes to agent-sudo (prompt stage); detached it is plain sudo.
 # (No display for the detached run, so sudo.conf's askpass doesn't step in
