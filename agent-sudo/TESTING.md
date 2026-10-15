@@ -175,6 +175,8 @@ log). The prompt now only appears in the agent's own tmux session; see
 | 2026-10-15 | Ubuntu 24.04 server, SSH, Claude in tmux | Deny from the popup (labeled test command) | pass | `denied by user`, exit 1, logged `cancelled` |
 | 2026-10-15 | Ubuntu 24.04 server | Removed "attached client" and `--approve` fallbacks | pass | `tmux-test.sh` 5/5 incl. new `outside-tmux` and `detached-session` refusals; both new cases fail against the previous askpass |
 | 2026-10-15 | Ubuntu 24.04 server, SSH, Claude in tmux | Installed new version; real `sudo` via shim, in tmux and with `TMUX`/`TMUX_PANE` removed | pass | in tmux: popup, approved (so `TMUX` vars reach askpass through sudo); without them: refused in ~1s, no popup, logged `no prompt available` |
+| 2026-10-15 | Ubuntu 24.04 server, SSH, no tmux | Claude Bash tool: `agent-sudo true`, plain `sudo id -u` via shim | pass | refused in 0.6s / 0.9s, no prompt, logged `no prompt available` |
+| 2026-10-15 | Ubuntu 24.04 server, SSH, no tmux | User-typed `! sudo true` in Claude Code | refused (expected) | same refusal: `!` runs under Claude with no terminal for sudo, so the shim routes it to agent-sudo. The message said "run it yourself", which read as if `!` would work; now says to use a terminal outside the agent |
 
 ## SSH without tmux: findings (2026-10-15)
 

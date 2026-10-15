@@ -580,7 +580,7 @@ Enter your password to approve. Deny or close to refuse."
             printf '%s\n' "$pw" ;;
         3)
             log "no prompt available: $logcmd"
-            die "no way to ask for approval: no GUI dialog, and the agent is not in an attached tmux session. Run the agent inside tmux, or run it yourself: sudo $(sanitize "$cmd")" ;;
+            die "no way to ask for approval: no GUI dialog, and the agent is not in an attached tmux session. Run the agent inside tmux, or run this in a terminal outside the agent (not with ! in Claude Code): sudo $(sanitize "$cmd")" ;;
         *)
             log "cancelled: $logcmd"
             die "denied by user" ;;

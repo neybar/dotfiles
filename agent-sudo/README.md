@@ -93,7 +93,7 @@ expires. The shim and `agent-sudo` don't have either limitation.
 | Linux, KDE | kdialog: one box shows the command, a second takes the password |
 | Linux, other desktops / WSLg | zenity (one box) |
 | SSH, agent inside tmux, its session attached | tmux popup over the agent's session |
-| anything else | refused right away, with the command to run yourself |
+| anything else | refused right away, with the command to run yourself in a terminal outside the agent |
 
 A request only ever appears where you are already looking (the agent's own
 tmux session) or pops up in front of you (a desktop dialog). It is never sent
