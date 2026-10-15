@@ -223,6 +223,9 @@ if [ -x /usr/bin/sudo ]; then
     # A process merely named sudo can't use the helper.
     mkdir "$tmp/fake"
     printf '#!/bin/sh\n%s "Password:"\n' "$tmp/askpass" >"$tmp/fake/sudo"
+    # macOS ps shows a script's comm as its interpreter, but argv[0] is enough.
+    [ "$(uname -s)" = Darwin ] &&
+        printf '#!/bin/bash\nexec -a sudo /bin/sh -c "%s Password:; :"\n' "$tmp/askpass" >"$tmp/fake/sudo"
     chmod +x "$tmp/fake/sudo"
     s "parent process is not the real sudo" "$tmp/fake/sudo"
     # What the prompt shows: a copy that prints the text instead of asking.
@@ -246,6 +249,19 @@ if [ -x /usr/bin/sudo ]; then
         # Only the wrapper's argv is exact on macOS; plain sudo -A is refused.
         s "cannot read the exact command" env SUDO_ASKPASS="$tmp/askpass" /usr/bin/sudo -k -A : 'a b'
         s "arguments don't match sudo's" "$tmp/bad-wrapper"
+        # ps for sudo must match the wrapper's argv exactly, not just its
+        # letters: this wrapper always runs "sudo -k -A : /x".
+        sed "s|^WRAPPER=.*|WRAPPER=$tmp/punct-wrapper|" "$tmp/askpass" >"$tmp/punct-askpass"
+        printf '#!/bin/sh\nPATH=/usr/bin:/bin\nSUDO_ASKPASS=%s sudo -k -A : /x\n' \
+            "$tmp/punct-askpass" >"$tmp/punct-wrapper"
+        chmod +x "$tmp/punct-askpass" "$tmp/punct-wrapper"
+        s "arguments don't match sudo's" "$tmp/punct-wrapper" : '~/x'
+        s "arguments don't match sudo's" "$tmp/punct-wrapper" : /x ''
+        s "no way to ask for approval" "$tmp/punct-wrapper" : /x
+        s "| : 'a	b$nl| c\\\\é' ''" show : "$(printf 'a\tb\nc\\\\\303\251')" ''
+        s "argument with spaces" show echo 'a b'
+        s "can't be told apart" show : 'a\011b'
+        s "can't be told apart" show : '^A'
     else
         s "sudo : 'a b'" env SUDO_ASKPASS="$tmp/askpass" /usr/bin/sudo -k -A : 'a b'
     fi

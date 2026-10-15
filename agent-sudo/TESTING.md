@@ -194,6 +194,10 @@ Steps 1-4 passed on 2026-10-15 (see results log). The prompt now only appears in
 | 2026-10-15 | macOS 26.6.2 arm64, Claude in tmux 3.8 (local) | Same with `TMUX`/`TMUX_PANE` removed | pass | refused in 0s, no popup, logged `no prompt available` |
 | 2026-10-15 | Ubuntu 24.04 server, SSH | Security fixes 1, 3-7 (repo copy, not installed) | pass | `test.sh` 120/120 under gawk, mawk, `bash --posix`. Against the previous askpass 13 of the new cases fail. Through the real sudo: a script named `sudo` is refused ("not the real sudo", effective uid 1000) where the old askpass reached the prompt stage; `HOME=/tmp/x` no longer unprotects your home; prompt text checked by printing it |
 | 2026-10-15 | Ubuntu 24.04 server, SSH, tmux 3.4 | Bug fixes, reason-checked tests, tmux-test.sh hardening (repo copy) | pass | `test.sh` 132/132 under gawk, mawk, `bash --posix`; every one-rule-deleted mutant fails; `tmux-test.sh` 5/5, and fails both mutants (silent popup, wrong-session client) |
+| 2026-10-15 | macOS 26.6.2 arm64 (bash 3.2 `sh`, BWK awk 20200816) | `test.sh` at 856ec39 (repo copy) | 131/133 | Two macOS-only failures. (1) Fake `sudo` refused as "parent process is 'sh'": macOS `ps -o comm=` shows argv[0], and for a script that is the interpreter, so the uid check was never reached. (2) U+200B case refused as "arguments don't match": with `LANG=en_US.UTF-8`, `ps` shows U+200B as `\040^K` and U+202E as `\040-.`, so the letters-and-digits check saw `K` on one side only |
+| 2026-10-15 | macOS 26.6.2 arm64 | `LC_ALL=C ps -ww -o args=` encoding, all 255 bytes plus 30 random byte strings | mapped | tab `\011`, newline `\012`, other control bytes `^X`, DEL `^?`, printable ASCII as is (`\` and `^` not escaped), 128-159 `M^X`, 160 `\240`, 161-254 `M-x`, 255 `M^?`, arguments joined by one space (a trailing `''` leaves a trailing space). No byte's form depends on its neighbours. The new `mac_ps_args` matches `ps` exactly on all cases |
+| 2026-10-15 | macOS 26.6.2 arm64 | `test.sh` after security fix 2 (repo copy) | pass | 140/140 with case folding always on (`RM -rf /etc`, `CSRUTIL disable`, `rm -rf /ETC` denied; BWK `tolower()` and the for-in copy fine); `mark_invisible` cases (U+202E, U+200B) pass. New Darwin cases: punctuation-only forgery (`: ~/x` vs `: /x`) and trailing-`''` forgery refused; spaces and `\011`/`^A` warnings shown. Mutants: the old letters-and-digits check fails the `~/x` case; no space warning fails its case. Fake `sudo` on Darwin now uses `exec -a sudo`, so it reaches the uid check |
+| 2026-10-15 | macOS 26.6.2 arm64, tmux 3.8 | `dev/tmux-test.sh` at 856ec39, BSD `/usr/bin/script` | pass | 5/5 (approve, deny, timeout, outside-tmux, detached-session), each popup counted through the harness log; 0 leftover request dirs |
 
 ## macOS argv: findings (2026-10-15)
 
@@ -325,17 +329,25 @@ reading the code. Work order: security, bugs + test strength, docs, refactors.
 
 ### Security
 
-Fixed 2026-10-15 except 2 (tests in `test.sh`; results log):
+Fixed 2026-10-15 (tests in `test.sh`; results log); 2 has a limit on macOS:
 
 1. **Fixed.** Caller check was only the parent's `comm`; a fake `sudo` could
    run the real helper and collect the password. Now the parent must have
    effective uid 0 and your real uid.
-2. **Open (Mac).** The wrapper's exact argv (agent-controlled) is accepted if
-   its letters and digits match `ps` for sudo. A forged argv that differs only
-   in punctuation or argument boundaries passes (`~/x` vs `/x`,
-   `sh -c 'rm -rf /etc'` vs `sh -c rm -rf /etc`). Fix: compare the
-   space-joined argv, encoded the way macOS `ps` encodes it, to the exact `ps`
-   string; flag arguments containing spaces in the prompt.
+2. **Fixed (Mac), with a limit.** The wrapper's exact argv (agent-controlled)
+   was accepted if its letters and digits matched `ps` for sudo, so `~/x` vs
+   `/x` passed. Now `mac_ps_args` encodes `sudo -k -A ARGS` the way
+   `LC_ALL=C ps -o args=` does (table in the results log) and it must equal
+   sudo's `ps` string exactly. `ps` stays ambiguous in two ways, flagged in
+   the prompt: an argument containing a space ("where one argument ends and
+   the next begins can't be cross-checked"), and literal text like `\011`,
+   `^A` or `M-a`, which looks the same as the tab, control or non-ASCII byte
+   it stands for. **Limit:** a boundary forgery in the other direction gets no
+   warning: the wrapper claims `sh -c rm -rf /etc` (no argument has a space)
+   while sudo got `sh -c 'rm -rf /etc'`. The prompt shows the same words, but
+   the rules check the claimed argv, so a deny rule can be skipped and it goes
+   to the prompt. Only reading sudo's own argv would close this, and macOS
+   refuses that (`EINVAL`, see "macOS argv").
 3. **Fixed.** askpass PATH is now system dirs first, `/usr/local/bin` and
    `/opt/homebrew/bin` last (only tmux and timeout come from there). The tmux
    popup runs `/bin/sh`. A planted tmux in a user-writable Homebrew dir is

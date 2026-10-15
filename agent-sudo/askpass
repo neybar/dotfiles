@@ -606,14 +606,26 @@ function run(argv) {
 EOF
 }
 
-# Letters and digits of $1, to compare an exact command with ps output. With
-# "octal", first drops ps's \NNN escapes for control characters.
-alnum_only() {
-    if [ "${2-}" = octal ]; then
-        printf '%s' "$1" | sed 's/\\[0-7][0-7][0-7]//g'
-    else
-        printf '%s' "$1"
-    fi | LC_ALL=C tr -cd 'A-Za-z0-9'
+# The arguments as macOS `LC_ALL=C ps -o args=` shows them: joined with
+# spaces, tab and newline as \011 \012, other control bytes as ^X, DEL as ^?,
+# bytes 128-255 as M^X / M-x / M^? (byte 160 as \240). Printable ASCII,
+# backslash and caret included, is shown as is. Checked against ps for every
+# byte; no byte's form depends on its neighbours.
+mac_ps_args() {
+    printf '%s\0' "$@" | od -An -v -tu1 | LC_ALL=C awk '
+        function enc(b, m) {
+            if (b == 0) return " "
+            if (b == 9) return "\\011"
+            if (b == 10) return "\\012"
+            if (b == 160) return "\\240"
+            m = b >= 128 ? "M" : ""
+            b %= 128
+            if (b < 32) return m "^" sprintf("%c", b + 64)
+            if (b == 127) return m "^?"
+            return m (m != "" ? "-" : "") sprintf("%c", b)
+        }
+        { for (i = 1; i <= NF; i++) out = out enc($i + 0) }
+        END { printf "%s", substr(out, 1, length(out) - 1) }'
 }
 
 # ---- main: called by sudo ---------------------------------------------------
@@ -658,15 +670,25 @@ EOF
     if [ "$(uname -s)" = Darwin ]; then
         # Only the wrapper's argv is readable, and it must be the one that ran
         # this sudo: "sh WRAPPER ARGS" runs "sudo -k -A ARGS". ps shows sudo's
-        # args (joined with spaces, control characters escaped), so compare
-        # letters and digits only.
+        # args joined with spaces and escaped (see mac_ps_args); they must
+        # match exactly. What ps can't tell apart is flagged in the prompt.
         [ $# -ge 2 ] && [ "$2" = "$WRAPPER" ] ||
             die "refusing: cannot read the exact command sudo was asked to run (on macOS, use agent-sudo)"
         shift 2
-        shown=$(ps -ww -o args= -p "$sudo_pid" 2>/dev/null)
-        [ -n "$shown" ] && [ "$(alnum_only "-k -A $*")" = "$(alnum_only "${shown#* }" octal)" ] ||
-            die "refusing: agent-sudo's arguments don't match sudo's"
         set -- sudo -k -A "$@"
+        ARGV_WARNS=
+        shown=$(LC_ALL=C ps -ww -o args= -p "$sudo_pid" 2>/dev/null)
+        [ -n "$shown" ] && [ "$(mac_ps_args "$@")" = "$shown" ] ||
+            die "refusing: agent-sudo's arguments don't match sudo's"
+        for a in "$@"; do
+            case $a in *" "*)
+                ARGV_WARNS="argument with spaces: on macOS, where one argument ends and the next begins can't be cross-checked"
+                break ;;
+            esac
+        done
+        # Literal text that looks like ps's escapes, e.g. "\011" for a tab.
+        ! printf '%s\n' "$*" | LC_ALL=C grep -Eq '\\(011|012|240)|\^[@-_?]|M-[!-~]' ||
+            ARGV_WARNS="${ARGV_WARNS:-}${ARGV_WARNS:+$NL}contains text like \\011, ^A or M-a: on macOS it can't be told apart from the control or non-ASCII character it stands for"
     fi
     if [ $# -eq 0 ]; then
         # /proc is hidden (Linux hidepid): ps joins args with spaces, and may
@@ -717,6 +739,7 @@ EOF
     chain=$CHAIN
 
     analyze "$@"
+    [ -z "${ARGV_WARNS:-}" ] || WARNS="${WARNS}${WARNS:+$NL}$ARGV_WARNS"
 
     if [ -n "$DENIES" ]; then
         log "denied by rules: $logcmd ($(printf '%s' "$DENIES" | tr '\n' ';'))"
