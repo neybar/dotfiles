@@ -86,7 +86,7 @@ For machine-specific custom ZSH scripts, place files in `~/Projects/dotfiles/zsh
 
 #### Machine-specific Git Configuration
 
-During `make install`, you'll be prompted to configure your Git user name and email. This setup also configures Git to include the `.gitconfig` file from your dotfiles repository, allowing you to:
+During `make install`, you'll be prompted for your Git user name and email if they aren't already set. This setup also configures Git to include the `.gitconfig` file from your dotfiles repository, allowing you to:
 
 - **Keep custom Git commands and aliases synced** across all your machines
 - **Keep machine-specific settings separate** (user name, email, signing keys, etc.)

@@ -94,8 +94,15 @@ expires. The shim and `agent-sudo` don't have either limitation.
 | Linux, other desktops / WSLg | zenity (one box) |
 | SSH, agent inside tmux | tmux popup over the agent's pane |
 | SSH, agent not in tmux, you have a tmux session attached | tmux popup in your attached session |
-| SSH, no tmux, another terminal of yours open | notice in that terminal; run `agent-sudo --approve` there |
+| SSH, no tmux, another terminal of yours open | notice in that terminal; run `agent-sudo --approve` there (known problem, see below) |
 | SSH, none of the above | refused right away, with the command to run yourself |
+
+Over SSH, run agents inside tmux. The "another terminal" case has a known
+problem: the notice goes to every login terminal `who` lists, which can include
+stale logins and panes of detached tmux sessions, so the request may wait the
+full 120 seconds with nothing you can see. A prompt in the agent's own terminal
+without tmux isn't supported (the agent's TUI owns the keyboard). See
+[TESTING.md](TESTING.md#ssh-without-tmux-findings-2026-10-15).
 
 Over SSH (`SSH_CONNECTION` set), terminal prompts come first, so a dialog never
 opens on a screen you can't see. Override the order with

@@ -137,6 +137,11 @@ Plasma.
 
 ### Linux server over SSH (no GUI) — highest priority
 
+Steps 1 and 2 passed on 2026-10-15 (see results log). Step 3's
+"second plain SSH login" case has a known problem; see
+[SSH without tmux](#ssh-without-tmux-findings-2026-10-15). For now the plan is to
+always run agents inside tmux over SSH, so the tmux cases are next.
+
 1. `make install` (nothing extra gets installed with no display). Without sudo
    rights, use `SKIP_AGENT_SUDO=1 make install`.
 2. `sh agent-sudo/dev/tmux-test.sh`, which should be all ok.
@@ -167,6 +172,82 @@ Plasma.
 | 2026-10-14 | WSL2 Ubuntu 24.04 (WSLg, zenity) | Terminal `sudo -k; sudo true` | pass | normal text prompt, no dialog |
 | 2026-10-14 | WSL2 Ubuntu 24.04 (WSLg, zenity) | Plain `sudo true` from Claude Code via `~/bin/sudo` shim | pass | dialog showed "Started from: claude on /dev/pts/0"; approved, ran |
 | 2026-10-14 | WSL2 Ubuntu 24.04 (WSLg, zenity) | Detached `sudo` (setsid, display set) via shim and `/usr/bin/sudo` | pass | both refused "not started from your terminal", no dialog, logged |
+| 2026-10-15 | Ubuntu 24.04 server, SSH, no tmux | `make test-agent-sudo`, `probe-argv.sh`, `tmux-test.sh`, `origin-test.sh` | pass | 96/96; `/proc` argv readable; 7/7 tmux; 7/7 origin/shim |
+| 2026-10-15 | Ubuntu 24.04 server, SSH, no tmux | `make update` auto-install | pass | root-owned files, `sudo.conf` line, shim; `--check` up to date |
+| 2026-10-15 | Ubuntu 24.04 server, SSH, no tmux | Claude Bash tool: plain `sudo true` via shim, no approval given | pass (timeout) | after 120s: `denied by user`, exit 1, logged `cancelled: true` |
+| 2026-10-15 | Ubuntu 24.04 server, SSH, no tmux | "Another terminal" notice | **fail (design)** | notice went to a stale login (pts/0, from Sep 17) and a detached tmux pane running another Claude; nothing visible to the user. See findings below |
+
+## SSH without tmux: findings (2026-10-15)
+
+Context: Claude Code over SSH, not in tmux, one visible terminal (the one Claude
+is running in). The goal was a prompt in that same terminal.
+
+**The "another terminal" fallback doesn't work in practice.** Targets come from
+`who`, which lists every login tty, including ones the user can't see:
+
+- a stale SSH login from weeks ago (still alive on the server);
+- the pane of a detached tmux session. That pane was running another Claude
+  Code, so the notice was also written into its TUI and may have garbled it.
+
+The request then waited the full 120s with nothing visible, instead of being
+refused right away. The user questioned the premise too: an approval request
+should not go to a different terminal. Options: drop the fallback (refuse with
+the command to run yourself), or only target recently active, non-tmux ttys.
+Undecided.
+
+**Prompting on the agent's own terminal by borrowing it doesn't work.** The
+agent TUI (raw mode) reads every keystroke, so askpass can't just read
+`/dev/pts/N`. Tried, on a private pty with zsh and bash and a fake raw-mode TUI
+that handles SIGTSTP/SIGCONT like Claude Code (scripts were in a scratch dir,
+not kept):
+
+1. SIGSTOP the shell, SIGTSTP the agent's process group (= Ctrl-Z), read the
+   password on the tty with echo off, restore, SIGCONT the agent, SIGCONT the
+   shell.
+2. Result: password read correctly, the agent never saw it, the agent stayed
+   the foreground process group. **But** both zsh and bash came back to their
+   prompt after the SIGCONT and started reading the tty alongside the agent: a
+   later keystroke went to the shell (`zsh: command not found: Qecho`).
+3. Control: SIGSTOP + SIGCONT of the shell alone, without touching the agent,
+   gives the same result. Root cause not identified.
+
+So the shell can't simply be frozen out of the way.
+
+**Parked options for the same-terminal case:**
+
+- **Ctrl-Z + shell hook** (what the user already does by hand: Ctrl-Z, run sudo,
+  `fg`). askpass sends SIGTSTP to the agent; zsh takes the terminal back as
+  usual; a `precmd` hook sees the pending request for this tty, shows it, reads
+  the password with echo off, hands it to askpass, then runs `fg`. Needs a
+  request channel from root askpass to the user's shell. Untested.
+- **Claude Code mod pane.** Mods (Claude Code >= the version
+  [cc-askpass](https://github.com/GoneTone/cc-askpass) needs, 2.1.286) can open
+  a pane with a one-line `Input`, run a long-lived helper, and pass data to a
+  command's stdin. Plan would be: keep the root-owned askpass (rules, `/proc`
+  argv, logging) and add a mod as another prompt surface. Caveats: `Input` has
+  no hidden-text option (the mod must mask it; cc-askpass has a masking bug), the
+  password passes through the Claude Code process (not the model), other mods
+  can see the keystrokes, and it's Claude-only. cc-askpass as-is keeps its
+  helper in the user-writable plugin dir and has no rules.
+- **Wrapper that owns the terminal** (a minimal multiplexer around the agent).
+  Robust but a new component; effectively what tmux popups already give.
+
+**Decision for now:** run agents in tmux over SSH and validate the tmux popup
+cases; revisit the above later.
+
+**Prior art checked** (2026-10-15): Anthropic closed requests for a sudo prompt,
+stdin passthrough and host-shell mode as not planned
+([#18316](https://github.com/anthropics/claude-code/issues/18316),
+[#37523](https://github.com/anthropics/claude-code/issues/37523),
+[#83046](https://github.com/anthropics/claude-code/issues/83046) for `!` sudo);
+PTY support ([#9881](https://github.com/anthropics/claude-code/issues/9881)) is
+an open request. Community tools:
+[sido-askpass](https://github.com/patdx/sido-askpass) (same design as this; its
+`/dev/tty` mode also gives up when a TUI owns the terminal),
+[SudoGate](https://github.com/tomasWade/sudogate) (review UI on the SSH client
+via `ssh -R`), [sudoplz](https://github.com/crypdick/sudoplz) and
+[claude-sudo-askpass](https://github.com/dgutson/claude-sudo-askpass) (desktop
+dialogs only). None solve a raw-tty prompt next to a running TUI.
 
 ## Notes for Claude (picking this up in a new session)
 
@@ -228,7 +309,12 @@ can't run it. Use `test.sh` for those cases, or use `chown -R nobody /etc` /
 `csrutil disable` as harmless deny probes.
 
 **Open items.**
-- Everything under "Not verified yet".
+- Everything under "Not verified yet". Next: tmux popup cases on the Ubuntu
+  server, then macOS.
+- The "another terminal" fallback: drop it or restrict its targets (see
+  [SSH without tmux](#ssh-without-tmux-findings-2026-10-15)).
+- A prompt in the agent's own terminal without tmux (parked options in the same
+  section).
 - A PR hasn't been opened.
 - The agent instruction snippet (README, "Telling agents about it") hasn't been
   added to `~/.claude/CLAUDE.md` or `AGENTS.md` files on any machine yet.
