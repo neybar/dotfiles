@@ -315,7 +315,8 @@ reading the code. Work order: security, bugs + test strength, docs, refactors.
   can't remove it; it only goes missing on a broken install, and the prompt
   already says "only built-in checks ran". Refusing would block all agent sudo
   for no security gain.
-- **macOS argv fallback: waiting on the Mac probe.** See "On the Mac" below.
+- **macOS argv: fixed on the Mac** (commit 4dcc462, see
+  [macOS argv](#macos-argv-findings-2026-10-15)). One gap is left: security item 2.
 - **The user's constraints for every fix:** no reduction in what sudo can do,
   and no silent refusals. Every refusal prints the reason and the command to
   run yourself.
@@ -325,11 +326,17 @@ reading the code. Work order: security, bugs + test strength, docs, refactors.
 1. Caller check is only the parent's `comm` (askpass:479-485); a fake `sudo`
    can run the real helper and collect the password. Fix: require the parent's
    euid to be 0 and its real uid to be yours.
-2. macOS: with sudo's argv hidden, the displayed command comes from sudo's
-   parent (askpass:504-512), which the agent controls. Fix depends on the probe.
+2. macOS: the wrapper's exact argv (agent-controlled) is accepted if its
+   letters and digits match `ps` for sudo. A forged argv that differs only in
+   punctuation or argument boundaries passes (`~/x` vs `/x`, `sh -c 'rm -rf /etc'`
+   vs `sh -c rm -rf /etc`). Fix: compare the space-joined argv, with control
+   characters escaped the way `ps` does, to the exact `ps` string. Only spaces
+   inside arguments then stay ambiguous; flag those in the prompt.
 3. askpass PATH has user-writable dirs first on Macs (`/usr/local/bin` on Intel
-   Homebrew, `/opt/homebrew/bin`). Fix: system dirs first, absolute paths for
-   `ps awk sed tr stty osascript`, Homebrew last (tmux, timeout only).
+   Homebrew; `/opt/homebrew/bin` supplies tmux and timeout on Apple Silicon).
+   The Mac test machine (Apple Silicon) resolved every tool to a stock SIP copy,
+   but an Intel Mac would pick up `/usr/local/bin` first. Fix: system dirs
+   first, absolute paths for `ps awk sed tr stty osascript`, Homebrew last.
 4. Protected paths use the agent's `$HOME` (reproduced: `HOME=/tmp/x` turns
    `rm -rf /home/<you>` into a warning). Fix: home from the passwd database
    (`getent passwd` / `dscl`).
@@ -378,20 +385,17 @@ reading the code. Work order: security, bugs + test strength, docs, refactors.
 deny reporting and `ps` lookups; `parse_sudo_opts` appends to `MODE` without
 saying so; unquoted tmux target; stale comment at askpass:373.
 
-### On the Mac (new session)
+### Still to run on a Mac
 
-Record the answers in the results log. The first one decides security item 2.
+The Apple Silicon Mac covered the probe, tests, dialog, shim, tmux and logging
+(results log, 2026-10-15). Left:
 
-1. `sh agent-sudo/dev/probe-argv.sh` and paste the output. Key line:
-   "ps args of sudo": full command, or `(sudo)`/empty?
-2. `sw_vers; sudo -V | head -1; tmux -V; uname -m`.
-3. `make test-agent-sudo` (bash 3.2 + BWK awk): pass count.
-4. Dialog: did it come to the front? Any Automation/Accessibility permission
-   prompt? Did `agent-sudo sh -c 'echo one
-echo two'` show two lines? Did
-   `agent-sudo echo "$(printf '%0500d' 0)"` show all of it?
-5. Is Touch ID for sudo enabled (`grep pam_tid /etc/pam.d/sudo_local`)? If so,
-   does a Touch ID approval skip the command display?
+1. SSH into the Mac: outside tmux, `agent-sudo true` is refused with "no way to
+   ask" and no dialog appears on the Mac's screen; inside tmux, the popup.
+2. An Intel Mac (Homebrew in `/usr/local`): `make install-agent-sudo` should
+   warn about `/usr/local`; check which `ps`/`awk`/`osascript` askpass uses.
+3. Touch ID for sudo, on a machine that has it enabled.
+4. Rerun `make test-agent-sudo` and `dev/tmux-test.sh` after the security fixes.
 
 ## Notes for Claude (picking this up in a new session)
 
