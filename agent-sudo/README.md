@@ -177,7 +177,11 @@ without root. Platform testing status and probe scripts: [TESTING.md](TESTING.md
   you expect. It can't use the *real* helper for this: askpass only answers the
   setuid sudo (effective uid 0), not a program that is merely named `sudo`.
 - The repo is writable by agents, and the install runs as root, so read the
-  diff `make install-agent-sudo` shows before you approve it.
+  diff `make install-agent-sudo` shows before you approve it. That review
+  guards against mistakes, not a malicious agent: the diff is produced by
+  repo code (`install.sh`, `Makefile`), which the same agent could change.
+  A weakened rule still leaves the real command in the approval prompt; a
+  tampered `askpass` could show a different command or keep the password.
 - The rules are pattern matching, not a sandbox. A command can hide intent:
   running a script file, or obfuscated shell. Shells are flagged so you can read
   the script, but a script *file's* contents aren't shown.

@@ -451,6 +451,37 @@ file; `test.sh` cleans up on interrupt and its warn cases are all under
 hard-coded install paths (each file must stand alone; `dev/*` and `test.sh`
 rewrite the `NAME=` lines).
 
+### Install trust (deferred, 2026-10-15)
+
+Not solved; the user wants it noted for now. Everything that grants root
+still needs the user's password: a popup, or the install. But:
+
+- The install diff is shown by repo code (`install.sh --review`, Makefile),
+  so a malicious agent could fake it. Tests don't help (same repo).
+- Weakened rules are the lesser harm: the popup still shows the real
+  command. A tampered `askpass` is the real danger (shows a different
+  command, keeps the password).
+- Outside agent-sudo, an agent running as the user can edit shell config
+  (`.zshrc`, `~/bin/sudo` via `make copy`) to catch the terminal sudo
+  password. Root-owning `~/bin/sudo` wouldn't help: the directory is the
+  user's, and PATH lives in `.zshrc`.
+
+Options discussed, none chosen:
+1. Root-owned updater, installed once by hand, that never runs repo code:
+   installs only from a commit signed with a key needing touch or a
+   passphrase, checks content hashes itself, shows its own diff.
+2. Root-owned list of must-deny commands checked against a new `askpass`
+   before install (catches careless weakening; a malicious askpass can game
+   it).
+3. Claude Code permission deny on editing `agent-sudo/**` and `bin/sudo`
+   (cheap, partial: Bash can still write files; other agents need their own).
+4. Run agents as another user or in a container: the only real boundary.
+   The user doesn't want agents running as another user.
+
+The user's reading: nothing very bad happens without approving a popup, and
+a changed allowlist still shows the command. True while `askpass` is honest,
+which rests on the install review.
+
 ### Still to run on a Mac
 
 The Apple Silicon Mac covered the probe, tests, dialog, shim, tmux and logging
