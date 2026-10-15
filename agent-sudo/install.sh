@@ -4,6 +4,8 @@
 #
 #   install.sh --check   (any user) exit 0 if installed and current, else
 #                        print what's missing and exit 1
+#   install.sh --review  (any user, in a terminal) show what an install would
+#                        change and ask for confirmation; exit 0 to go ahead
 #   install.sh [--gui DESKTOP]
 #                        (root) install or update. --gui (Linux with a display)
 #                        also installs a dialog program if none is present:
@@ -46,6 +48,45 @@ if [ "${1-}" = --check ]; then
         status=1
     fi
     exit $status
+fi
+
+# The repo is writable by you and by any agent working in it, so show exactly
+# what is about to be installed as root before asking for the password.
+if [ "${1-}" = --review ]; then
+    # Subshell: a failed redirect on ":" would exit this script under dash.
+    if ! (: </dev/tty) 2>/dev/null; then
+        echo "agent-sudo: not installing: no terminal to confirm the changes in." >&2
+        echo "            Run 'make install-agent-sudo' in a terminal outside the agent." >&2
+        exit 1
+    fi
+    changed=
+    for pair in $FILES; do
+        f=${pair%%:*} dest=${pair#*:}
+        cmp -s "$src/$f" "$dest" && continue
+        changed=yes
+        if [ -e "$dest" ]; then
+            diff -u "$dest" "$src/$f" | sed "1,2s|$src/||"
+        else
+            echo "new file: $dest (from agent-sudo/$f)"
+        fi
+    done
+    # install.sh and the Makefile run as root but aren't installed, so there's
+    # nothing to diff against; flag uncommitted edits instead.
+    if command -v git >/dev/null 2>&1 &&
+        dirty=$(git -C "$src/.." status --porcelain -- agent-sudo/install.sh Makefile 2>/dev/null) &&
+        [ -n "$dirty" ]; then
+        echo "WARNING: uncommitted changes to files that run as root:"
+        echo "$dirty"
+        git -C "$src/.." --no-pager diff -- agent-sudo/install.sh Makefile
+        changed=yes
+    fi
+    [ -n "$changed" ] || { echo "agent-sudo: installed files already match the repo"; exit 0; }
+    printf 'Install these changes as root? [y/N] ' >/dev/tty
+    read -r answer </dev/tty || answer=
+    case $answer in
+        [Yy] | [Yy][Ee][Ss]) exit 0 ;;
+        *) echo "agent-sudo: install cancelled" >&2; exit 1 ;;
+    esac
 fi
 
 [ "$(id -u)" -eq 0 ] || { echo "install.sh: run as root (make install-agent-sudo)" >&2; exit 1; }

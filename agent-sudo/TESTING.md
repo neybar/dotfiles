@@ -298,6 +298,101 @@ via `ssh -R`), [sudoplz](https://github.com/crypdick/sudoplz) and
 [claude-sudo-askpass](https://github.com/dgutson/claude-sudo-askpass) (desktop
 dialogs only). None solve a raw-tty prompt next to a running TUI.
 
+## Review findings (2026-10-15)
+
+Four reviews (code quality, principal/security, QA, docs) of the branch.
+"Reproduced" means confirmed with `askpass --check` on Linux; the rest are from
+reading the code. Work order: security, bugs + test strength, docs, refactors.
+
+### Decisions
+
+- **Install guard (done).** `make install-agent-sudo` runs
+  `install.sh --review` first: it shows a diff of each installed file that
+  would change, warns about uncommitted edits to `install.sh`/`Makefile`, and
+  asks y/N on `/dev/tty`. With no terminal it stops with a message. It can't
+  stop an agent that also rewrites the Makefile; documented in README.
+- **Missing rules file: keep warning.** The file is root-owned, so an agent
+  can't remove it; it only goes missing on a broken install, and the prompt
+  already says "only built-in checks ran". Refusing would block all agent sudo
+  for no security gain.
+- **macOS argv fallback: waiting on the Mac probe.** See "On the Mac" below.
+- **The user's constraints for every fix:** no reduction in what sudo can do,
+  and no silent refusals. Every refusal prints the reason and the command to
+  run yourself.
+
+### Security (to fix)
+
+1. Caller check is only the parent's `comm` (askpass:479-485); a fake `sudo`
+   can run the real helper and collect the password. Fix: require the parent's
+   euid to be 0 and its real uid to be yours.
+2. macOS: with sudo's argv hidden, the displayed command comes from sudo's
+   parent (askpass:504-512), which the agent controls. Fix depends on the probe.
+3. askpass PATH has user-writable dirs first on Macs (`/usr/local/bin` on Intel
+   Homebrew, `/opt/homebrew/bin`). Fix: system dirs first, absolute paths for
+   `ps awk sed tr stty osascript`, Homebrew last (tmux, timeout only).
+4. Protected paths use the agent's `$HOME` (reproduced: `HOME=/tmp/x` turns
+   `rm -rf /home/<you>` into a warning). Fix: home from the passwd database
+   (`getent passwd` / `dscl`).
+5. Abbreviated long options (`--chd`, `--us=`) are misparsed (reproduced;
+   sudo 1.9.15 accepts abbreviations). Fix: resolve unique prefixes like
+   getopt_long; refuse ambiguous or unknown ones with a message.
+6. Rule gaps (reproduced): `find -delete` with no path skips the protected-cwd
+   check; `rm -rf />/dev/null` (redirect attached) only warns.
+7. Display can be forged: newlines in an argument can scroll the real command
+   away; bidi/zero-width characters can disguise it. Fix: escape newlines and
+   non-ASCII inside arguments, show run-as and warnings above the command.
+
+### Bugs (to fix)
+
+- ssh-askpass dialog has no timeout (askpass:351-356).
+- `install.sh --check` accepts any `Path askpass` line (install.sh:38).
+- Refusal hint drops sudo's options: `sudo -u postgres psql` suggests
+  `sudo psql` (askpass:583).
+- macOS case-insensitive filesystems: `RM -rf /etc`, `CSRUTIL disable` not
+  caught; `/private/tmp` not protected.
+- Unknown `AGENT_SUDO_PROMPT` values are silently ignored.
+- Empty password gives `denied: no password entered`; docs say `denied by user`.
+
+### Tests (to fix)
+
+- test.sh only checks allow/warn/deny, not the reason; deleting five different
+  rules still passed 96/96. Add an expected-reason substring.
+- No automated coverage of `prompt_mode` (argv reading, caller check, cwd).
+- No awk matrix (mawk/gawk/BWK); test.sh uses whatever `awk` is.
+- tmux-test.sh: dead check at line ~200, fixed sleeps, never asserts the popup
+  text, shares `/tmp/agent-sudo.*` with real requests.
+- Add cases: the reproduced gaps above, missing/empty rules file,
+  `HOME=/Users/tester`, `rm -rf /etc/`, `rm / -rf`, `sudo -s rm -rf /`.
+
+### Docs (to fix)
+
+- macOS still described as untested (both READMEs, this file).
+- No uninstall section. SSH ordering wording imprecise. Prompt table lacks
+  ssh-askpass. Top-level README doesn't mention the `~/bin/sudo` shim.
+- Stale counts ("7/7 tmux"), branch-specific wording, Notes-for-Claude repeats
+  README.
+
+### Refactors (later)
+
+`prompt_mode` ~110 lines (split argv read / cwd / prompt text); duplicated
+deny reporting and `ps` lookups; `parse_sudo_opts` appends to `MODE` without
+saying so; unquoted tmux target; stale comment at askpass:373.
+
+### On the Mac (new session)
+
+Record the answers in the results log. The first one decides security item 2.
+
+1. `sh agent-sudo/dev/probe-argv.sh` and paste the output. Key line:
+   "ps args of sudo": full command, or `(sudo)`/empty?
+2. `sw_vers; sudo -V | head -1; tmux -V; uname -m`.
+3. `make test-agent-sudo` (bash 3.2 + BWK awk): pass count.
+4. Dialog: did it come to the front? Any Automation/Accessibility permission
+   prompt? Did `agent-sudo sh -c 'echo one
+echo two'` show two lines? Did
+   `agent-sudo echo "$(printf '%0500d' 0)"` show all of it?
+5. Is Touch ID for sudo enabled (`grep pam_tid /etc/pam.d/sudo_local`)? If so,
+   does a Touch ID approval skip the command display?
+
 ## Notes for Claude (picking this up in a new session)
 
 This conversation's history isn't available on other machines, so this is the
@@ -363,7 +458,7 @@ can't run it. Use `test.sh` for those cases, or use `chown -R nobody /etc` /
 `csrutil disable` as harmless deny probes.
 
 **Open items.**
-- Everything under "Not verified yet". Next: macOS.
+- Everything under "Not verified yet", and "Review findings (2026-10-15)".
 - A prompt in the agent's own terminal without tmux (parked options in the same
   section).
 - A PR hasn't been opened.

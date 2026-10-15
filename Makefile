@@ -109,8 +109,10 @@ sync-agent-sudo:
 			echo "\033[0;31magent-sudo: install failed; retry with make install-agent-sudo\033[0m"; \
 	fi
 
-# Install or reinstall unconditionally (runs the tests first).
+# Install or reinstall (runs the tests first). Shows the changes and asks
+# before running anything as root.
 install-agent-sudo: test-agent-sudo
+	@sh agent-sudo/install.sh --review
 	@if [ "$$(uname -s)" = Linux ] && [ -n "$$DISPLAY$$WAYLAND_DISPLAY" ]; then \
 		sudo sh agent-sudo/install.sh --gui "$$XDG_CURRENT_DESKTOP"; \
 	else \

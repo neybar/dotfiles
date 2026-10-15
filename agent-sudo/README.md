@@ -36,6 +36,15 @@ sudo password once. When it's current, they print `agent-sudo: up to date` and
 don't ask for anything. If the install fails or you cancel it, the rest of
 `make install` still runs.
 
+Before asking for the password, the install shows a diff of every file it is
+about to replace and asks `Install these changes as root? [y/N]`. It also warns
+about uncommitted changes to `install.sh` and the `Makefile`, which run as root
+but aren't installed. Agents can edit the repo, so read the diff. This only
+catches changes you'd otherwise miss: an agent that rewrites the `Makefile`
+can remove the check too. With no terminal to confirm in (for example `!` in
+Claude Code), it stops and tells you to run `make install-agent-sudo` in a
+terminal.
+
 ```sh
 make install-agent-sudo                # install/reinstall now (runs tests first)
 sh agent-sudo/install.sh --check       # is the installed copy current?
