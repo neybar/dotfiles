@@ -12,7 +12,7 @@ git fetch origin && git switch feature/agent-sudo
 make test-agent-sudo               # rule tests: no root, no prompts
 sh agent-sudo/install.sh --check   # installed copy current? (no root)
 sh agent-sudo/dev/probe-argv.sh    # what the helper can see of sudo here
-sh agent-sudo/dev/tmux-test.sh     # tmux popups + agent-sudo --approve, real ttys
+sh agent-sudo/dev/tmux-test.sh     # tmux popups, real ttys
 sh agent-sudo/dev/origin-test.sh   # "from your terminal" rule + ~/bin/sudo shim (Linux)
 ```
 
@@ -34,12 +34,9 @@ mawk, dash, tmux 3.4. Date: 2026-10-14.
 | Fail closed: analysis error | invalid regex, malformed rule lines, a ~140 KB command | refused / still analyzed |
 | Display fidelity | newline inside `sh -c`, trailing `''`, ESC/CR in args | shown exactly; control chars become `?` |
 | tmux popup, agent inside tmux | `dev/tmux-test.sh` against a real attached client | approve ~1s, deny ~0s, timeout closes popup, no leftovers |
-| tmux popup, agent outside tmux | same, agent not in tmux; popup goes to the attached client | approved |
-| `agent-sudo --approve` from another terminal | same, no tmux; approver on a separate pty | approved; notice written to the "other terminal" |
-| No way to ask | no tmux client, no other terminal | refused immediately (no wait) |
+| No popup outside the agent's own session | `dev/tmux-test.sh`: agent outside tmux, and agent in a session with no client, while another session is attached | refused immediately, no popup (2026-10-15; the old code failed both) |
 | "From your terminal" rule | `dev/origin-test.sh`: as Claude Code vs. a detached (setsid) process | allowed vs. refused without prompt |
 | `~/bin/sudo` shim routing | same | from terminal: agent-sudo; detached: plain sudo; no loop when the shim is first in PATH |
-| Notice never hits the agent's terminal | `other_ttys` with Claude Code on pts/0 | listed only pts/1, a different terminal |
 | Logging | `journalctl -t agent-sudo` | entries present; long commands capped at 2000 chars |
 | `install.sh` install / `--check` / rerun / zenity via `--gui` | as root in an `ubuntu:24.04` Docker container | installs root-owned, adds one `sudo.conf` line, reports up to date, detects a changed file |
 | Makefile `sync-agent-sudo` | dry runs: not installed, `SKIP_AGENT_SUDO=1` | detects missing pieces; skip works (real sudo run pending) |
@@ -137,24 +134,21 @@ Plasma.
 
 ### Linux server over SSH (no GUI) — highest priority
 
-Steps 1 and 2 passed on 2026-10-15 (see results log). Step 3's
-"second plain SSH login" case has a known problem; see
-[SSH without tmux](#ssh-without-tmux-findings-2026-10-15). For now the plan is to
-always run agents inside tmux over SSH, so the tmux cases are next.
+Steps 1, 2 and the tmux parts of 3 and 4 passed on 2026-10-15 (see results
+log). The prompt now only appears in the agent's own tmux session; see
+[SSH without tmux](#ssh-without-tmux-findings-2026-10-15).
 
 1. `make install` (nothing extra gets installed with no display). Without sudo
    rights, use `SKIP_AGENT_SUDO=1 make install`.
 2. `sh agent-sudo/dev/tmux-test.sh`, which should be all ok.
 3. Real runs, with Claude Code in your SSH session:
    - Claude inside tmux, asked to run `agent-sudo true`: the popup appears over
-     its pane.
-   - Claude not in tmux, while you also have a tmux session attached from
-     another SSH login: the popup appears in that session.
-   - No tmux, with a second plain SSH login open: that terminal shows
-     `[agent-sudo] ... Run: agent-sudo --approve`. Running it shows the command
-     and takes your password.
-   - Only one SSH login and no tmux: refused right away, with the command to
-     run yourself.
+     its session.
+   - Claude not in tmux, even with a tmux session attached elsewhere: refused
+     right away, with the command to run yourself. No popup anywhere.
+   When testing by hand, put the expected action in the command (for example
+   `sudo sh -c ': TEST - please DENY this one'`): the popup covers the agent,
+   so you can't see what it asked for.
 4. Check `journalctl -t agent-sudo` for approved/cancelled entries.
 5. If the machine's window manager is ever used locally, the desktop checks
    above apply to that session.
@@ -176,6 +170,11 @@ always run agents inside tmux over SSH, so the tmux cases are next.
 | 2026-10-15 | Ubuntu 24.04 server, SSH, no tmux | `make update` auto-install | pass | root-owned files, `sudo.conf` line, shim; `--check` up to date |
 | 2026-10-15 | Ubuntu 24.04 server, SSH, no tmux | Claude Bash tool: plain `sudo true` via shim, no approval given | pass (timeout) | after 120s: `denied by user`, exit 1, logged `cancelled: true` |
 | 2026-10-15 | Ubuntu 24.04 server, SSH, no tmux | "Another terminal" notice | **fail (design)** | notice went to a stale login (pts/0, from Sep 17) and a detached tmux pane running another Claude; nothing visible to the user. See findings below |
+| 2026-10-15 | Ubuntu 24.04 server, SSH, Claude in tmux | `tmux-test.sh` | pass after test fix | `no-way-to-ask` set `TMUX_TMPDIR` to a missing dir; tmux 3.4 then falls back to `/tmp` and reached the real server (popup on the user's client). Case since replaced |
+| 2026-10-15 | Ubuntu 24.04 server, SSH, Claude in tmux | Claude Bash tool: `agent-sudo true`, plain `sudo id -u` via shim | pass | popup over Claude's session; approved, ran as root; logged `approved` |
+| 2026-10-15 | Ubuntu 24.04 server, SSH, Claude in tmux | Deny from the popup (labeled test command) | pass | `denied by user`, exit 1, logged `cancelled` |
+| 2026-10-15 | Ubuntu 24.04 server | Removed "attached client" and `--approve` fallbacks | pass | `tmux-test.sh` 5/5 incl. new `outside-tmux` and `detached-session` refusals; both new cases fail against the previous askpass |
+| 2026-10-15 | Ubuntu 24.04 server, SSH, Claude in tmux | Installed new version; real `sudo` via shim, in tmux and with `TMUX`/`TMUX_PANE` removed | pass | in tmux: popup, approved (so `TMUX` vars reach askpass through sudo); without them: refused in ~1s, no popup, logged `no prompt available` |
 
 ## SSH without tmux: findings (2026-10-15)
 
@@ -191,9 +190,15 @@ is running in). The goal was a prompt in that same terminal.
 
 The request then waited the full 120s with nothing visible, instead of being
 refused right away. The user questioned the premise too: an approval request
-should not go to a different terminal. Options: drop the fallback (refuse with
-the command to run yourself), or only target recently active, non-tmux ttys.
-Undecided.
+should not go to a different terminal.
+
+**Decision (2026-10-15):** a request only appears where the user is already
+looking (the agent's own tmux session, on a client attached to it) or pops up
+in front of them (desktop dialog). The `agent-sudo --approve` fallback and the
+"most recently active tmux client anywhere" fallback were removed; everything
+else is refused at once with the command to run yourself. Before the change,
+an agent in a detached tmux session also sent its popup to whichever client
+tmux picked, possibly showing a different session.
 
 **Prompting on the agent's own terminal by borrowing it doesn't work.** The
 agent TUI (raw mode) reads every keystroke, so askpass can't just read
@@ -232,8 +237,8 @@ So the shell can't simply be frozen out of the way.
 - **Wrapper that owns the terminal** (a minimal multiplexer around the agent).
   Robust but a new component; effectively what tmux popups already give.
 
-**Decision for now:** run agents in tmux over SSH and validate the tmux popup
-cases; revisit the above later.
+**Decision for now:** run agents in tmux over SSH (validated 2026-10-15);
+revisit the above later.
 
 **Prior art checked** (2026-10-15): Anthropic closed requests for a sudo prompt,
 stdin passthrough and host-shell mode as not planned
@@ -271,9 +276,11 @@ or passwords passing through the agent.
   - It reads sudo's argv from `/proc/$PPID/cmdline` (exact), otherwise from `ps`,
     otherwise from the wrapper's argv. If none of those work, it refuses.
   - It analyzes the command, then prompts. In order: a GUI dialog (osascript;
-    kdialog on KDE (two boxes) or zenity elsewhere), a tmux popup (agent's pane
-    or your attached client), or a request answered by `agent-sudo --approve`
-    in another of your terminals. Over SSH the terminal prompts come first.
+    kdialog on KDE (two boxes) or zenity elsewhere), a tmux popup (only on a
+    client attached to the agent's own session). Nothing else: the user wants
+    requests only where they're looking or popping up in front of them, so
+    other terminals and other tmux sessions are never used. Over SSH the tmux
+    popup comes first.
   - The user does not want GNOME libraries on KDE machines, so zenity is never
     installed there.
   - The SSH/headless case matters most to the user.
@@ -309,10 +316,7 @@ can't run it. Use `test.sh` for those cases, or use `chown -R nobody /etc` /
 `csrutil disable` as harmless deny probes.
 
 **Open items.**
-- Everything under "Not verified yet". Next: tmux popup cases on the Ubuntu
-  server, then macOS.
-- The "another terminal" fallback: drop it or restrict its targets (see
-  [SSH without tmux](#ssh-without-tmux-findings-2026-10-15)).
+- Everything under "Not verified yet". Next: macOS.
 - A prompt in the agent's own terminal without tmux (parked options in the same
   section).
 - A PR hasn't been opened.

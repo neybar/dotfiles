@@ -12,8 +12,6 @@
 #                                      analyze a sudo command line; exit 1 if denied
 #   askpass --from-terminal            exit 0 if an ancestor has a terminal
 #                                      you own (used by the ~/bin/sudo shim)
-#   askpass --approve                  answer a pending request from another
-#                                      terminal (agent-sudo --approve)
 #   askpass --tty-prompt DIR           internal: runs inside a tmux popup
 #
 # Must be installed root-owned (make install-agent-sudo). Anything writable by
@@ -403,16 +401,16 @@ await_reply() {
 
 prompt_tmux() {
     command -v tmux >/dev/null 2>&1 || return 2
-    # Inside tmux: a popup over the agent's own pane. Otherwise: your most
-    # recently active tmux client on this machine, if any.
-    if [ -n "${TMUX:-}" ]; then
-        target="-t ${TMUX_PANE:-}"
-    else
-        client=$(tmux list-clients -F '#{client_activity} #{client_name}' 2>/dev/null |
-            sort -rn | head -1 | cut -d' ' -f2)
-        [ -n "$client" ] || return 2
-        target="-c $client"
-    fi
+    # Only when the agent itself runs in tmux, and only on a client showing
+    # the agent's own session (the most recently active one, if several).
+    # Never anywhere else: the request must appear where you are looking.
+    [ -n "${TMUX:-}" ] && [ -n "${TMUX_PANE:-}" ] || return 2
+    session=$(tmux display-message -p -t "$TMUX_PANE" '#{session_id}' 2>/dev/null) || return 2
+    case $session in '$'[0-9]*) ;; *) return 2 ;; esac
+    client=$(tmux list-clients -t "$session" -F '#{client_activity} #{client_name}' 2>/dev/null |
+        sort -rn | head -1 | cut -d' ' -f2)
+    [ -n "$client" ] || return 2
+    target="-c $client -t $TMUX_PANE"
     new_request "$1" || return 2
     (
         tmux display-popup $target -E -w 90% -h 75% "sh $SELF --tty-prompt $dir"
@@ -429,43 +427,7 @@ prompt_tmux() {
     esac
 }
 
-# Your other terminals on this machine (from utmp), minus the ones the
-# requesting process chain is using, so nothing is written over the agent.
-other_ttys() {
-    mine=
-    p=${sudo_pid:-$$} i=0
-    while [ -n "$p" ] && [ "$p" -gt 1 ] 2>/dev/null && [ $i -lt 12 ]; do
-        t=$(ps -o tty= -p "$p" 2>/dev/null | tr -d ' ')
-        case $t in '' | '?' | '??') ;; *) mine="$mine /dev/$t " ;; esac
-        p=$(ps -o ppid= -p "$p" 2>/dev/null | tr -d ' ')
-        i=$((i + 1))
-    done
-    who 2>/dev/null | awk -v u="$(id -un)" '$1 == u { print "/dev/" $2 }' | sort -u |
-        while IFS= read -r t; do
-            case $mine in *" $t "*) continue ;; esac
-            [ -w "$t" ] && printf '%s\n' "$t"
-        done
-}
-
-# No GUI and no tmux client: wait for "agent-sudo --approve" from another of
-# your terminals, and tell those terminals about it. Only if one exists.
-prompt_terminal() {
-    ttys=$(other_ttys)
-    [ -n "$ttys" ] || return 2
-    new_request "$1" || return 2
-    : >"$dir/pending"
-    for t in $ttys; do
-        printf '\r\n\a[agent-sudo] a sudo command is waiting for your approval (%ss). Run: agent-sudo --approve\r\n' \
-            "$TIMEOUT" >"$t" 2>/dev/null
-    done
-    await_reply
-    case $reply in
-        ok:*) printf '%s\n' "${reply#ok:}" ;;
-        *) return 1 ;;
-    esac
-}
-
-# The approving side, on a real terminal: tmux popup or agent-sudo --approve.
+# The approving side, inside the tmux popup.
 tty_prompt() {
     dir=$1 reply=cancel
     : >"$dir/started"
@@ -482,28 +444,15 @@ tty_prompt() {
     exit 0
 }
 
-# agent-sudo --approve: answer the oldest pending request owned by you.
-approve_mode() {
-    [ -t 0 ] || die "--approve needs to run in a terminal"
-    set +f
-    for d in $(ls -dtr /tmp/agent-sudo.* 2>/dev/null); do
-        [ -d "$d" ] && [ -O "$d" ] && [ -e "$d/pending" ] && [ ! -e "$d/started" ] &&
-            [ -p "$d/reply" ] || continue
-        set -f
-        tty_prompt "$d"
-    done
-    echo "agent-sudo: nothing is waiting for approval"
-}
-
 # Try the prompts suited to where we are. Over SSH, tmux comes first and the
 # macOS dialog is skipped, so nothing opens on a screen you can't see.
 get_password() {
     method=${AGENT_SUDO_PROMPT:-}
     if [ -z "$method" ]; then
         if [ -n "${SSH_CONNECTION:-}" ]; then
-            method="tmux gui terminal"
+            method="tmux gui"
         else
-            method="gui tmux terminal"
+            method="gui tmux"
         fi
     fi
     for m in $method; do
@@ -516,7 +465,6 @@ get_password() {
                 fi
                 prompt_gui "$1"; rc=$? ;;
             tmux) prompt_tmux "$1"; rc=$? ;;
-            terminal) prompt_terminal "$1"; rc=$? ;;
             *) continue ;;
         esac
         [ "$rc" -eq 2 ] && continue
@@ -632,7 +580,7 @@ Enter your password to approve. Deny or close to refuse."
             printf '%s\n' "$pw" ;;
         3)
             log "no prompt available: $logcmd"
-            die "no way to ask for approval: no GUI dialog, no tmux client, and no other terminal of yours to run 'agent-sudo --approve' in. Open another terminal (or use tmux), or run it yourself: sudo $(sanitize "$cmd")" ;;
+            die "no way to ask for approval: no GUI dialog, and the agent is not in an attached tmux session. Run the agent inside tmux, or run it yourself: sudo $(sanitize "$cmd")" ;;
         *)
             log "cancelled: $logcmd"
             die "denied by user" ;;
@@ -642,7 +590,6 @@ Enter your password to approve. Deny or close to refuse."
 case ${1-} in
     --check) shift; check_mode "$@" ;;
     --tty-prompt) tty_prompt "$2" ;;
-    --approve) approve_mode ;;
     --from-terminal) from_your_terminal "$PPID" ;;
     *) prompt_mode ;;
 esac

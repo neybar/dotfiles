@@ -55,7 +55,7 @@ It also adds `Path askpass /usr/local/libexec/agent-sudo/askpass` to
 desktop or WSLg (a display is present) with apt, it installs `zenity` for the
 dialog, or `kdialog` if the desktop is KDE, unless one of them is already
 there. Nothing GNOME is ever installed on KDE: Plasma ships kdialog. macOS uses
-its built-in dialog, and servers use a tmux popup or a second terminal, so
+its built-in dialog, and servers use a tmux popup, so
 neither needs one.
 
 The files are root-owned on purpose. If the helper were writable by your user,
@@ -92,31 +92,28 @@ expires. The shim and `agent-sudo` don't have either limitation.
 | macOS, local | native dialog (`osascript`) |
 | Linux, KDE | kdialog: one box shows the command, a second takes the password |
 | Linux, other desktops / WSLg | zenity (one box) |
-| SSH, agent inside tmux | tmux popup over the agent's pane |
-| SSH, agent not in tmux, you have a tmux session attached | tmux popup in your attached session |
-| SSH, no tmux, another terminal of yours open | notice in that terminal; run `agent-sudo --approve` there (known problem, see below) |
-| SSH, none of the above | refused right away, with the command to run yourself |
+| SSH, agent inside tmux, its session attached | tmux popup over the agent's session |
+| anything else | refused right away, with the command to run yourself |
 
-Over SSH, run agents inside tmux. The "another terminal" case has a known
-problem: the notice goes to every login terminal `who` lists, which can include
-stale logins and panes of detached tmux sessions, so the request may wait the
-full 120 seconds with nothing you can see. A prompt in the agent's own terminal
-without tmux isn't supported (the agent's TUI owns the keyboard). See
+A request only ever appears where you are already looking (the agent's own
+tmux session) or pops up in front of you (a desktop dialog). It is never sent
+to another terminal or another tmux session: an agent outside tmux, or in a
+session no client is attached to, is refused even if you have tmux open
+elsewhere. If several clients show the agent's session, the most recently
+active one gets the popup.
+
+Over SSH, run agents inside tmux. A prompt in the agent's own terminal without
+tmux isn't supported (the agent's TUI owns the keyboard). See
 [TESTING.md](TESTING.md#ssh-without-tmux-findings-2026-10-15).
 
-Over SSH (`SSH_CONNECTION` set), terminal prompts come first, so a dialog never
+Over SSH (`SSH_CONNECTION` set), the tmux popup comes first, so a dialog never
 opens on a screen you can't see. Override the order with
-`AGENT_SUDO_PROMPT`, e.g. `"tmux terminal"` or `gui`.
+`AGENT_SUDO_PROMPT`, e.g. `tmux` or `gui`.
 
 kdialog uses two boxes because its password box turns newlines into spaces.
 The message box shows the command exactly. Qt only renders it as HTML if a
 tag appears before the first line break, and the first line is fixed text.
 zenity, on non-KDE desktops, shows the text exactly in a single box.
-
-`agent-sudo --approve` answers the oldest pending request owned by you. It
-shows the same details and asks for the password on that terminal. The notice
-goes to your other login terminals (from `who`), never to the terminal the
-agent is running in.
 
 Every prompt shows the command, run-as user, working directory, the process
 chain that asked (for example `agent-sudo <- zsh <- claude`), the terminal it

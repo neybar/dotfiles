@@ -1,8 +1,8 @@
 #!/bin/sh
 # Exercises the terminal-based prompts with real ttys, no sudo, no password:
 #   - tmux popup when the agent runs inside tmux (approve / deny / timeout)
-#   - tmux popup on your attached client when the agent is NOT inside tmux
-#   - "agent-sudo --approve" from another terminal when there's no tmux
+#   - no popup anywhere else: agent outside tmux, or in a session with no
+#     client attached, while another session is attached -> refused at once
 # Uses a private tmux server and the repo copy of askpass with a test entry
 # point.  Usage: sh agent-sudo/dev/tmux-test.sh
 
@@ -10,8 +10,7 @@ set -u
 src=$(cd "$(dirname "$0")/.." && pwd)/askpass
 T=$(mktemp -d)
 H=$T/harness
-# Private tmux server on the default socket name, so askpass's plain `tmux`
-# commands find it when the agent isn't inside tmux.
+# Private tmux server, so nothing reaches your real tmux clients.
 unset TMUX TMUX_PANE
 TMUX_TMPDIR=$T
 export TMUX_TMPDIR
@@ -24,14 +23,12 @@ if ls -d /tmp/agent-sudo.* >/dev/null 2>&1; then
     echo "remove leftover /tmp/agent-sudo.* dirs first"; exit 1
 fi
 
-# Harness: "--harness MSG" runs only the prompt step; TEST_TTYS stands in for
-# your other terminals in the --approve case.
+# Harness: "--harness MSG" runs only the prompt step.
 sed -e "s|^SELF=.*|SELF=$H|" \
     -e 's|^    --check) shift; check_mode "$@" ;;|    --harness) TIMEOUT=${TO:-120}; get_password "$2"; echo "rc=$?" ;;|' \
-    -e 's|^    ttys=$(other_ttys)$|    ttys=${TEST_TTYS-$(other_ttys)}|' \
     "$src" >"$H"
 chmod +x "$H"
-grep -q 'TEST_TTYS' "$H" || { echo "harness patch failed"; exit 1; }
+grep -q -- '--harness' "$H" || { echo "harness patch failed"; exit 1; }
 
 # attach CMD: run CMD on a pseudo-terminal whose input is fd 7
 attach() {
@@ -79,38 +76,23 @@ inside approve 120 'hunter2\r' 'hunter2 rc=0 done'
 inside deny 120 '\r' 'rc=1 done'
 inside timeout 3 '' 'rc=1 done'
 
-# --- agent outside tmux: popup on the attached client ---
+# --- agent outside tmux, a client attached elsewhere: refused, no popup ---
 rm -f "$T/result"; start=$(date +%s)
-(AGENT_SUDO_PROMPT=tmux sh "$H" --harness 'Command: test outside' >"$T/result" 2>&1; echo done >>"$T/result") &
-wait_started started
-printf 'hunter3\r' >&7
+AGENT_SUDO_PROMPT=tmux TO=5 sh "$H" --harness 'Command: test outside' >"$T/result" 2>&1
+echo done >>"$T/result"
+report outside-tmux "$start" 'rc=3 done'
+
+# --- agent in a session nobody is looking at: refused, no popup ---
+tm new-session -d -s d sh
+sleep 0.3
+rm -f "$T/result"; start=$(date +%s)
+tm send-keys -t d "AGENT_SUDO_PROMPT=tmux TO=5 sh $H --harness 'Command: test detached' >$T/result 2>&1; echo done >>$T/result" Enter
 wait_done
-report outside-tmux "$start" 'hunter3 rc=0 done'
+report detached-session "$start" 'rc=3 done'
+[ -e /tmp/agent-sudo.*/started ] 2>/dev/null && { echo "FAIL popup opened"; fail=1; }
 
 exec 7>&-
 tm kill-server
-sleep 0.3
-
-# --- no tmux: agent-sudo --approve from another terminal ---
-: >"$T/fake-tty"
-rm -f "$T/result"; start=$(date +%s)
-(AGENT_SUDO_PROMPT=terminal TEST_TTYS=$T/fake-tty sh "$H" --harness 'Command: test approve' \
-    >"$T/result" 2>&1; echo done >>"$T/result") &
-wait_started pending
-attach "sh $H --approve"
-sleep 0.5
-printf 'hunter4\r' >&7
-wait_done
-report terminal-approve "$start" 'hunter4 rc=0 done'
-grep -q 'agent-sudo --approve' "$T/fake-tty" && echo "ok   notice written to other terminal" ||
-    { echo "FAIL notice not written"; fail=1; }
-exec 7>&-
-
-# --- no tmux, no other terminal: refuse right away ---
-rm -f "$T/result"; start=$(date +%s)
-TMUX_TMPDIR=$T/none AGENT_SUDO_PROMPT="tmux terminal" TEST_TTYS= sh "$H" --harness x >"$T/result" 2>&1
-echo done >>"$T/result"
-report no-way-to-ask "$start" 'rc=3 done'
 
 sleep 0.5
 left=$(ls -d /tmp/agent-sudo.* 2>/dev/null | wc -l | tr -d ' ')
