@@ -45,16 +45,15 @@ mawk, dash, tmux 3.4. Date: 2026-10-14.
 
 ## Not verified yet
 
-### macOS (biggest open questions)
+### macOS
 
-The dialog is AppleScript's `display dialog` via `osascript`, which is built in,
-so nothing gets installed. None of it has run on a Mac yet. Specific unknowns:
-whether multi-line commands and very long commands display fully, whether the
-dialog comes to the front when triggered from a background process, and whether
-macOS asks for Automation/Accessibility permission the first time.
+Steps 1, 2, 4–8 passed on 2026-10-15 (macOS 26.6.2, Apple Silicon; see results
+log). Left: step 3 (tmux), step 9 (SSH), step 10 (Touch ID; not enabled on the
+test machine), the `setsid`-free cron-like check in step 5, and an Intel Mac.
 
 1. `make test-agent-sudo`. This exercises macOS `/bin/sh` (bash 3.2) and BWK
-   awk, which haven't been tested. All cases should pass.
+   awk. All cases should pass; on macOS this includes real-sudo cases for the
+   exact-argv path (done 2026-10-15, see results log).
 2. `sh agent-sudo/dev/probe-argv.sh`, and record the output. Key questions:
    - Does "ps args of sudo" show the full command, or only `(sudo)` / nothing?
      If it's `(sudo)`, plain `sudo` from agents is refused and only `agent-sudo`
@@ -177,6 +176,46 @@ log). The prompt now only appears in the agent's own tmux session; see
 | 2026-10-15 | Ubuntu 24.04 server, SSH, Claude in tmux | Installed new version; real `sudo` via shim, in tmux and with `TMUX`/`TMUX_PANE` removed | pass | in tmux: popup, approved (so `TMUX` vars reach askpass through sudo); without them: refused in ~1s, no popup, logged `no prompt available` |
 | 2026-10-15 | Ubuntu 24.04 server, SSH, no tmux | Claude Bash tool: `agent-sudo true`, plain `sudo id -u` via shim | pass | refused in 0.6s / 0.9s, no prompt, logged `no prompt available` |
 | 2026-10-15 | Ubuntu 24.04 server, SSH, no tmux | User-typed `! sudo true` in Claude Code | refused (expected) | same refusal: `!` runs under Claude with no terminal for sudo, so the shim routes it to agent-sudo. The message said "run it yourself", which read as if `!` would work; now says to use a terminal outside the agent |
+| 2026-10-15 | macOS 26.6.2 arm64 (sudo 1.9.17p2, bash 3.2, awk 20200816) | `make test-agent-sudo` | pass | 96/96 |
+| 2026-10-15 | macOS 26.6.2 arm64 | `probe-argv.sh` | pass, with a finding | no `/proc`; `ps` *does* show sudo's args, but joined with spaces; sudo cwd unreadable, parent cwd via `lsof` works; no `pam_tid` in `sudo_local`; `/usr/local` root-owned, no `/usr/local/libexec` yet |
+| 2026-10-15 | macOS 26.6.2 arm64 | Parsing via `ps` (scratch askpass, `AGENT_SUDO_PROMPT=none`) | **fail** | argument boundaries lost: `sh -c 'echo "a b" arg2'` shown as `sh -c echo '"a' 'b"' arg2`; a newline in `sh -c` splits words. The wrapper's own `--check` gets exact argv, so rule denies still hold; the prompt text and askpass's second analysis are wrong. See [macOS argv](#macos-argv-findings-2026-10-15) |
+| 2026-10-15 | macOS 26.6.2 arm64 | "From your terminal" prerequisites | pass | Claude's tty `ttys005`, `[ -O /dev/ttys005 ]` true |
+| 2026-10-15 | macOS 26.6.2 arm64 | Exact argv via JXA `sysctl` (fix) | pass | `make test-agent-sudo` 101/101, incl. 5 real-sudo cases: multi-line `sh -c`, empty arg, quote, tab, rule deny; plain `sudo -A` refused; mismatched wrapper refused. Old askpass fails 4 of the 5 |
+| 2026-10-15 | macOS 26.6.2 arm64 | `make install-agent-sudo` | pass | root-owned files, `sudo.conf` line; no `/usr/local` warning (Apple Silicon, Homebrew in `/opt/homebrew`); `--check` up to date |
+| 2026-10-15 | macOS 26.6.2 arm64 | Claude Bash tool: `agent-sudo`, Deny / Approve | pass | `denied by user`, exit 1; approved: `id -u` printed 0 |
+| 2026-10-15 | macOS 26.6.2 arm64 | Plain `sudo` from Claude via `~/bin/sudo` shim | pass | dialog shown; rule deny (`chown -R nobody /etc`) refused in 0.06s, no dialog |
+| 2026-10-15 | macOS 26.6.2 arm64 | Dialog display (screenshot) | pass | multi-line `sh -c` on separate lines; ~1.3 KB command shown in full (wraps, dialog grows, no scroll); "Requested by: sh <- zsh <- claude", "Started from: claude on /dev/ttys005". No Automation/Accessibility prompt seen |
+| 2026-10-15 | macOS 26.6.2 arm64 | Approve with empty password (Return) | pass | `denied: no password entered` |
+| 2026-10-15 | macOS 26.6.2 arm64 | Logging | pass, with notes | unified log, process `logger`; `-t` tag not shown, so query `/usr/bin/log show --predicate 'process == "logger"'` (`log` alone is a zsh builtin). Wrapper-side rule denies aren't logged (all platforms) |
+| 2026-10-15 | macOS 26.6.2 arm64 (iTerm) | Terminal `sudo -k; sudo true` | pass | normal text prompt, no dialog |
+| 2026-10-15 | macOS 26.6.2 arm64 (iTerm) | `agent-sudo true` from a terminal | pass | dialog shown |
+| 2026-10-15 | macOS 26.6.2 arm64 (iTerm) | Dialog left open 120s | pass | closed itself; `denied by user` |
+
+## macOS argv: findings (2026-10-15)
+
+`ps -o args=` on macOS shows a setuid sudo's arguments, so askpass takes that
+path and never falls back to the wrapper, but `ps` joins arguments with spaces.
+`set -- $args` then re-splits them, so what the dialog shows is not what runs.
+
+Exact argv is available for a same-user process through `sysctl`
+`KERN_PROCARGS2`; `/usr/bin/perl` (in base macOS) can call it with
+`syscall(202, ...)`. Tested: works on a same-user process (spaces, newlines,
+trailing `''` all exact), returns `EINVAL` for sudo itself (setuid). So on macOS
+askpass should read the agent-sudo wrapper's argv (its parent) that way, and
+check it joins to the same string `ps` shows for sudo.
+
+**Fixed (2026-10-15)** with the JXA reader below; `test.sh` now covers it
+through the real sudo.
+
+Native alternative, also tested: JavaScript for Automation
+(`osascript -l JavaScript`) can call `sysctl()` through `ObjC.bindFunction`.
+Same results (exact argv including UTF-8, `EINVAL` on sudo), ~50 ms vs ~10 ms
+for perl. `osascript` is already needed for the dialog, and Apple has listed
+perl among the scripting runtimes it may drop (python went in 12.3), so JXA is
+the better choice. The `sysctl` command can't read `kern.procargs2`;
+`launchctl procinfo` needs root. Every tool askpass uses resolves to a stock
+copy under SIP (`/bin/ps`, `/usr/bin/awk`, `/usr/sbin/lsof`), so Homebrew
+packages on the test machine don't change these results.
 
 ## SSH without tmux: findings (2026-10-15)
 
@@ -275,8 +314,11 @@ or passwords passing through the agent.
   - It is deliberately *not* `exec`, so askpass can read the wrapper's argv when
     sudo's argv is unreadable (expected on macOS).
 - `askpass` is a POSIX sh script with an embedded POSIX awk program.
-  - It reads sudo's argv from `/proc/$PPID/cmdline` (exact), otherwise from `ps`,
-    otherwise from the wrapper's argv. If none of those work, it refuses.
+  - It reads sudo's argv from `/proc/$PPID/cmdline` (exact). On macOS it reads
+    the wrapper's argv exactly via JXA + `sysctl` `KERN_PROCARGS2`, checked
+    against `ps` for sudo; anything else there is refused. On Linux with
+    `/proc` hidden it falls back to `ps`, then the wrapper's `ps` args (lossy).
+    If none of those work, it refuses.
   - It analyzes the command, then prompts. In order: a GUI dialog (osascript;
     kdialog on KDE (two boxes) or zenity elsewhere), a tmux popup (only on a
     client attached to the agent's own session). Nothing else: the user wants
@@ -324,5 +366,8 @@ can't run it. Use `test.sh` for those cases, or use `chown -R nobody /etc` /
 - A PR hasn't been opened.
 - The agent instruction snippet (README, "Telling agents about it") hasn't been
   added to `~/.claude/CLAUDE.md` or `AGENTS.md` files on any machine yet.
+- macOS dialog grows with the command and can't scroll: a ~1.3 KB command fills
+  most of a laptop screen, so a much longer one may run off it. Untested.
+- Rule denies caught by the wrapper's `--check` (before sudo) aren't logged.
 - busybox awk ignores invalid regexes (fails open). Not a target platform; it's
   documented.

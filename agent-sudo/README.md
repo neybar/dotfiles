@@ -120,7 +120,8 @@ chain that asked (for example `agent-sudo <- zsh <- claude`), the terminal it
 traces back to (`claude on /dev/pts/0`), and any warnings.
 It times out after 120 seconds. Decisions (approved, denied, cancelled, but
 never the password) are logged with `logger -t agent-sudo`. On Linux, read them
-with `journalctl -t agent-sudo`; on macOS they go to the unified log.
+with `journalctl -t agent-sudo`; on macOS they go to the unified log, under
+the `logger` process: `/usr/bin/log show --last 1h --predicate 'process == "logger"'`.
 
 ## Rules
 
@@ -147,11 +148,13 @@ without root. Platform testing status and probe scripts: [TESTING.md](TESTING.md
   the script, but a script *file's* contents aren't shown.
 - If the command can't be read or the analysis fails (bad rule, awk error), the
   request is refused rather than shown without checks.
-- Linux reads the exact arguments from `/proc`. On macOS, `ps` may not show a
-  setuid process's arguments, so the helper falls back to `agent-sudo`'s own
-  arguments (which is why it runs sudo as a child instead of `exec`), and plain
-  `sudo` from a tool is refused. `ps` joins arguments with spaces, so quoting
-  isn't shown exactly on macOS. **The macOS path is untested so far.**
+- Linux reads the exact arguments from `/proc`. macOS has no `/proc`, and its
+  `ps` joins arguments with spaces. The helper reads `agent-sudo`'s own
+  arguments instead, exactly, through `sysctl` (`KERN_PROCARGS2`, called from
+  JavaScript for Automation), and checks them against what `ps` shows for sudo.
+  That is why `agent-sudo` runs sudo as a child instead of `exec`. macOS won't
+  give out a setuid process's arguments that way, so plain `sudo -A` from a
+  tool is refused there; the `~/bin/sudo` shim sends it through `agent-sudo`.
 - The rules need an awk that rejects invalid regexes (gawk, mawk, macOS awk).
   busybox awk silently ignores them.
 

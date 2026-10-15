@@ -28,8 +28,8 @@ fi
 # for a password (NOPASSWD entries).
 "$ASKPASS" --check -- "$@" >/dev/null || exit 1
 
-# Not exec: askpass reads this process's arguments when it can't read sudo's
-# (macOS doesn't show a setuid process's arguments to other processes).
+# Not exec: on macOS askpass reads this process's arguments, since it can't
+# read a setuid process's arguments exactly.
 SUDO_ASKPASS=$ASKPASS
 export SUDO_ASKPASS
 sudo -k -A "$@"

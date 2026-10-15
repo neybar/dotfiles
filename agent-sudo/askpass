@@ -473,6 +473,53 @@ get_password() {
     return 3
 }
 
+# ---- reading sudo's command on macOS ---------------------------------------
+
+# Exact argv of a process of yours, from sysctl KERN_PROCARGS2 through
+# JavaScript for Automation (no /proc on macOS, and ps joins args with
+# spaces). One argument per line, newlines inside one as \001. Prints nothing
+# for other users' processes, including setuid sudo, so askpass reads the
+# agent-sudo wrapper instead.
+mac_argv() {
+    osascript -l JavaScript - "$1" "$(sysctl -n kern.argmax)" 2>/dev/null <<'EOF'
+function run(argv) {
+  ObjC.bindFunction('sysctl', ['int', ['void *', 'unsigned int', 'void *', 'void *', 'void *', 'unsigned long']]);
+  var L1 = 5, U8 = 4; // NSISOLatin1StringEncoding (bytes as chars), NSUTF8StringEncoding
+  function le(vals, width) { // little-endian integers -> NSMutableData
+    var s = '';
+    vals.forEach(function (v) {
+      for (var i = 0; i < width; i++) { s += String.fromCharCode(v & 255); v = Math.floor(v / 256); }
+    });
+    return $(s).dataUsingEncoding(L1).mutableCopy;
+  }
+  function bytes(d) { return $.NSString.alloc.initWithDataEncoding(d, L1).js; }
+  var cap = parseInt(argv[1], 10); // kern.argmax: larger sizes are rejected
+  var mib = le([1, 49, parseInt(argv[0], 10)], 4); // CTL_KERN, KERN_PROCARGS2, pid
+  var len = le([cap], 8), buf = $.NSMutableData.dataWithLength(cap);
+  if ($.sysctl(mib.mutableBytes, 3, buf.mutableBytes, len.mutableBytes, null, 0) !== 0) throw 'sysctl';
+  var b = bytes(len), n = 0;
+  for (var i = 7; i >= 0; i--) n = n * 256 + b.charCodeAt(i);
+  // argc, exec path, NUL padding, then argc NUL-terminated arguments.
+  var raw = bytes(buf.subdataWithRange($.NSMakeRange(0, n)));
+  var argc = raw.charCodeAt(0) | raw.charCodeAt(1) << 8 | raw.charCodeAt(2) << 16 | raw.charCodeAt(3) << 24;
+  var args = raw.slice(4).replace(/^[^\0]*\0+/, '').split('\0');
+  if (args.length <= argc) throw 'short';
+  var out = args.slice(0, argc).map(function (a) { return a.replace(/\n/g, '\x01'); }).join('\n');
+  return $.NSString.alloc.initWithDataEncoding($(out).dataUsingEncoding(L1), U8).js;
+}
+EOF
+}
+
+# Letters and digits of $1, to compare an exact command with ps output. With
+# "octal", first drops ps's \NNN escapes for control characters.
+alnum_only() {
+    if [ "${2-}" = octal ]; then
+        printf '%s' "$1" | sed 's/\\[0-7][0-7][0-7]//g'
+    else
+        printf '%s' "$1"
+    fi | LC_ALL=C tr -cd 'A-Za-z0-9'
+}
+
 # ---- main: called by sudo ---------------------------------------------------
 
 prompt_mode() {
@@ -485,22 +532,39 @@ prompt_mode() {
     esac
     parent=$(ps -o ppid= -p "$sudo_pid" 2>/dev/null | tr -d ' ')
 
-    # sudo's argv, exactly, from /proc on Linux. Newlines inside an argument
-    # travel as \001 so they don't split it; the end marker keeps trailing
-    # empty arguments.
-    set --
+    # sudo's argv, exactly: from /proc on Linux; on macOS from the agent-sudo
+    # wrapper (see mac_argv). One argument per line, newlines inside an
+    # argument as \001; the end marker keeps trailing empty arguments.
+    end="agent-sudo-end-$$"
+    listing=
     if [ -r "/proc/$sudo_pid/cmdline" ]; then
-        end="agent-sudo-end-$$"
-        while IFS= read -r a; do
-            [ "$a" = "$end" ] && break
-            case $a in *"$SOH"*) a=$(printf '%s' "$a" | tr '\001' '\n') ;; esac
-            set -- "$@" "$a"
-        done <<EOF
-$(tr '\n\0' '\001\n' <"/proc/$sudo_pid/cmdline"; echo "$end")
+        listing=$(tr '\n\0' '\001\n' <"/proc/$sudo_pid/cmdline"; echo "$end")
+    elif [ "$(uname -s)" = Darwin ] && [ -n "$parent" ]; then
+        listing=$(mac_argv "$parent"; echo "$end")
+    fi
+    set --
+    [ -z "$listing" ] || while IFS= read -r a; do
+        [ "$a" = "$end" ] && break
+        case $a in *"$SOH"*) a=$(printf '%s' "$a" | tr '\001' '\n') ;; esac
+        set -- "$@" "$a"
+    done <<EOF
+$listing
 EOF
+    if [ "$(uname -s)" = Darwin ]; then
+        # Only the wrapper's argv is readable, and it must be the one that ran
+        # this sudo: "sh WRAPPER ARGS" runs "sudo -k -A ARGS". ps shows sudo's
+        # args (joined with spaces, control characters escaped), so compare
+        # letters and digits only.
+        [ $# -ge 2 ] && [ "$2" = "$WRAPPER" ] ||
+            die "refusing: cannot read the exact command sudo was asked to run (on macOS, use agent-sudo)"
+        shift 2
+        shown=$(ps -ww -o args= -p "$sudo_pid" 2>/dev/null)
+        [ -n "$shown" ] && [ "$(alnum_only "-k -A $*")" = "$(alnum_only "${shown#* }" octal)" ] ||
+            die "refusing: agent-sudo's arguments don't match sudo's"
+        set -- sudo -k -A "$@"
     fi
     if [ $# -eq 0 ]; then
-        # No /proc (macOS) or it's hidden: ps joins args with spaces, and may
+        # /proc is hidden (Linux hidepid): ps joins args with spaces, and may
         # not show a setuid process's args at all. agent-sudo runs sudo as a
         # child, so its own argv (same user) carries the same arguments.
         args=$(ps -ww -o args= -p "$sudo_pid" 2>/dev/null)

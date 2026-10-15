@@ -149,5 +149,49 @@ done
 rules=$dir/rules
 rm -rf "$tmp"
 
+# What askpass reads as sudo's command, through the real sudo. Scratch copies
+# point at each other; AGENT_SUDO_PROMPT=none makes askpass refuse after
+# parsing, and the refusal shows the command as parsed. sudo then fails with
+# "no password was provided"; nothing runs as root (the commands are no-ops
+# even where sudo needs no password).
+if [ -x /usr/bin/sudo ]; then
+    tmp=$(mktemp -d)
+    sed -e "s|^RULES_FILE=.*|RULES_FILE=$dir/rules|" -e "s|^SELF=.*|SELF=$tmp/askpass|" \
+        -e "s|^WRAPPER=.*|WRAPPER=$tmp/agent-sudo|" "$dir/askpass" >"$tmp/askpass"
+    sed "s|^ASKPASS=.*|ASKPASS=$tmp/askpass|" "$dir/agent-sudo" >"$tmp/agent-sudo"
+    # A wrapper whose sudo gets different arguments than its own.
+    sed "s|^WRAPPER=.*|WRAPPER=$tmp/bad-wrapper|" "$tmp/askpass" >"$tmp/bad-askpass"
+    printf '#!/bin/sh\nSUDO_ASKPASS=%s /usr/bin/sudo -k -A true\n' "$tmp/bad-askpass" >"$tmp/bad-wrapper"
+    chmod +x "$tmp/askpass" "$tmp/agent-sudo" "$tmp/bad-askpass" "$tmp/bad-wrapper"
+
+    # s EXPECT-SUBSTRING COMMAND...   checks what the refusal says
+    s() {
+        expect=$1; shift
+        out=$(AGENT_SUDO_PROMPT=none "$@" 2>&1)
+        case $out in
+            *"$expect"*) pass=$((pass + 1)) ;;
+            *)
+                fail=$((fail + 1))
+                printf 'FAIL: expected output containing: %s\n      got: %s\n' "$expect" "$out" ;;
+        esac
+    }
+    nl='
+'
+    s "sudo sh -c ': \"a b\"$nl: two' '' arg" \
+        "$tmp/agent-sudo" sh -c ": \"a b\"$nl: two" '' arg
+    s "sudo : 'it'\\''s' 'tab	x'" "$tmp/agent-sudo" -u nobody -- : "it's" 'tab	x'
+    s "agent-sudo: denied: recursive chown" "$tmp/agent-sudo" chown -R nobody /etc
+    if [ "$(uname -s)" = Darwin ]; then
+        # Only the wrapper's argv is exact on macOS; plain sudo -A is refused.
+        s "cannot read the exact command" env SUDO_ASKPASS="$tmp/askpass" /usr/bin/sudo -k -A : 'a b'
+        s "arguments don't match sudo's" "$tmp/bad-wrapper"
+    else
+        s "sudo : 'a b'" env SUDO_ASKPASS="$tmp/askpass" /usr/bin/sudo -k -A : 'a b'
+    fi
+    rm -rf "$tmp"
+else
+    echo "note: no /usr/bin/sudo; skipped the real-sudo cases"
+fi
+
 printf '%d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]
