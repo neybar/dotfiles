@@ -42,9 +42,8 @@ don't ask for anything. If the install fails or you cancel it, the rest of
 Before asking for the password, the install shows a diff of every file it is
 about to replace and asks `Install these changes as root? [y/N]`. It also warns
 about uncommitted changes to `install.sh` and the `Makefile`, which run as root
-but aren't installed. Agents can edit the repo, so read the diff. This only
-catches changes you'd otherwise miss: an agent that rewrites the `Makefile`
-can remove the check too. With no terminal to confirm in (for example `!` in
+but aren't installed. Agents can edit the repo, so read the diff; treat it as
+a check against mistakes. With no terminal to confirm in (for example `!` in
 Claude Code), it stops and tells you to run `make install-agent-sudo` in a
 terminal.
 
@@ -177,11 +176,9 @@ without root. Platform testing status and probe scripts: [TESTING.md](TESTING.md
   you expect. It can't use the *real* helper for this: askpass only answers the
   setuid sudo (effective uid 0), not a program that is merely named `sudo`.
 - The repo is writable by agents, and the install runs as root, so read the
-  diff `make install-agent-sudo` shows before you approve it. That review
-  guards against mistakes, not a malicious agent: the diff is produced by
-  repo code (`install.sh`, `Makefile`), which the same agent could change.
-  A weakened rule still leaves the real command in the approval prompt; a
-  tampered `askpass` could show a different command or keep the password.
+  diff `make install-agent-sudo` shows before you approve it. The review is a
+  check against mistakes; stronger guarantees for updates (such as signed
+  installs) aren't implemented yet.
 - The rules are pattern matching, not a sandbox. A command can hide intent:
   running a script file, or obfuscated shell. Shells are flagged so you can read
   the script, but a script *file's* contents aren't shown.

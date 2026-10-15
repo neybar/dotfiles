@@ -334,8 +334,8 @@ reading the code. Work order: security, bugs + test strength, docs, refactors.
 - **Install guard (done).** `make install-agent-sudo` runs
   `install.sh --review` first: it shows a diff of each installed file that
   would change, warns about uncommitted edits to `install.sh`/`Makefile`, and
-  asks y/N on `/dev/tty`. With no terminal it stops with a message. It can't
-  stop an agent that also rewrites the Makefile; documented in README.
+  asks y/N on `/dev/tty`. With no terminal it stops with a message. A check
+  against mistakes (see README).
 - **Missing rules file: keep warning.** The file is root-owned, so an agent
   can't remove it; it only goes missing on a broken install, and the prompt
   already says "only built-in checks ran". Refusing would block all agent sudo
@@ -453,34 +453,8 @@ rewrite the `NAME=` lines).
 
 ### Install trust (deferred, 2026-10-15)
 
-Not solved; the user wants it noted for now. Everything that grants root
-still needs the user's password: a popup, or the install. But:
-
-- The install diff is shown by repo code (`install.sh --review`, Makefile),
-  so a malicious agent could fake it. Tests don't help (same repo).
-- Weakened rules are the lesser harm: the popup still shows the real
-  command. A tampered `askpass` is the real danger (shows a different
-  command, keeps the password).
-- Outside agent-sudo, an agent running as the user can edit shell config
-  (`.zshrc`, `~/bin/sudo` via `make copy`) to catch the terminal sudo
-  password. Root-owning `~/bin/sudo` wouldn't help: the directory is the
-  user's, and PATH lives in `.zshrc`.
-
-Options discussed, none chosen:
-1. Root-owned updater, installed once by hand, that never runs repo code:
-   installs only from a commit signed with a key needing touch or a
-   passphrase, checks content hashes itself, shows its own diff.
-2. Root-owned list of must-deny commands checked against a new `askpass`
-   before install (catches careless weakening; a malicious askpass can game
-   it).
-3. Claude Code permission deny on editing `agent-sudo/**` and `bin/sudo`
-   (cheap, partial: Bash can still write files; other agents need their own).
-4. Run agents as another user or in a container: the only real boundary.
-   The user doesn't want agents running as another user.
-
-The user's reading: nothing very bad happens without approving a popup, and
-a changed allowlist still shows the command. True while `askpass` is honest,
-which rests on the install review.
+Stronger guarantees for updates (for example signed installs) are deferred.
+The analysis is kept outside the public repo.
 
 ### Still to run on a Mac
 
@@ -524,8 +498,7 @@ or passwords passing through the agent.
 silent refusals: every refusal says why and gives the command to run yourself.
 
 **Threat model.** Mistakes and runaway agents, plus the deceptions the review
-fixed (fake sudo parent, forged display, agent `$HOME`, repo edits before an
-install). Not a malicious same-user process in general: it could set its own
+fixed (fake sudo parent, forged display, agent `$HOME`). Not a malicious same-user process in general: it could set its own
 `SUDO_ASKPASS` and show a fake dialog. Don't over-claim this.
 
 **Who can ask.** The user rejected a name allowlist of agents. The rule is:
