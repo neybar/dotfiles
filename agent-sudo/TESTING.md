@@ -194,6 +194,7 @@ log). The prompt now only appears in the agent's own tmux session; see
 | 2026-10-15 | macOS 26.6.2 arm64, Claude in tmux 3.8 (local) | Claude Bash tool: `AGENT_SUDO_PROMPT=tmux agent-sudo ...`, Deny / Approve | pass | popup over Claude's pane; deny: `denied by user`, exit 1, logged `cancelled`; approve: `id -u` printed 0, logged `approved` (so `AGENT_SUDO_PROMPT` and `TMUX` reach askpass through sudo on macOS). Without the override, local runs use the dialog first |
 | 2026-10-15 | macOS 26.6.2 arm64, Claude in tmux 3.8 (local) | Same with `TMUX`/`TMUX_PANE` removed | pass | refused in 0s, no popup, logged `no prompt available` |
 | 2026-10-15 | Ubuntu 24.04 server, SSH | Security fixes 1, 3-7 (repo copy, not installed) | pass | `test.sh` 120/120 under gawk, mawk, `bash --posix`. Against the previous askpass 13 of the new cases fail. Through the real sudo: a script named `sudo` is refused ("not the real sudo", effective uid 1000) where the old askpass reached the prompt stage; `HOME=/tmp/x` no longer unprotects your home; prompt text checked by printing it |
+| 2026-10-15 | Ubuntu 24.04 server, SSH, tmux 3.4 | Bug fixes, reason-checked tests, tmux-test.sh hardening (repo copy) | pass | `test.sh` 132/132 under gawk, mawk, `bash --posix`; every one-rule-deleted mutant fails; `tmux-test.sh` 5/5, and fails both mutants (silent popup, wrong-session client) |
 
 ## macOS argv: findings (2026-10-15)
 
@@ -354,27 +355,45 @@ Fixed 2026-10-15 except 2 (tests in `test.sh`; results log):
    warning. Newlines stay real so scripts stay readable (the Mac test checked
    multi-line display).
 
-### Bugs (to fix)
+### Bugs
 
-- ssh-askpass dialog has no timeout (askpass:351-356).
-- `install.sh --check` accepts any `Path askpass` line (install.sh:38).
-- Refusal hint drops sudo's options: `sudo -u postgres psql` suggests
-  `sudo psql` (askpass:583).
-- macOS case-insensitive filesystems: `RM -rf /etc`, `CSRUTIL disable` not
-  caught. (`/private/tmp` fixed.)
-- Unknown `AGENT_SUDO_PROMPT` values are silently ignored.
-- Empty password gives `denied: no password entered`; docs say `denied by user`.
+Fixed 2026-10-15 except where noted:
 
-### Tests (to fix)
+- **Fixed.** ssh-askpass dialog had no timeout; now runs under `timeout`.
+- **Fixed.** `install.sh --check` accepted any `Path askpass` line. It now
+  wants the exact line, and prints a note (without failing, so `make update`
+  doesn't ask for the password every time) when another helper is named.
+- **Fixed.** The refusal hint dropped sudo's options. It now keeps them
+  (minus the `-k -A` agent-sudo adds) and starts with `cd DIR &&` when the
+  directory is known: `cd /srv && sudo -u postgres psql`.
+- **Fixed.** macOS case-insensitive filesystems: on macOS, command names,
+  protected paths and rules are compared ignoring case (`RM -rf /etc`,
+  `CSRUTIL disable` denied). `--check --fold` does the same on Linux for
+  tests. Folding only adds matches.
+- **Fixed.** Unknown `AGENT_SUDO_PROMPT` values are reported in the refusal
+  (`none` is accepted and disables prompts).
+- **Docs step.** Empty password gives `denied: no password entered`; docs say
+  `denied by user`.
 
-- test.sh only checks allow/warn/deny, not the reason; deleting five different
-  rules still passed 96/96. Add an expected-reason substring.
-- No automated coverage of `prompt_mode` (argv reading, caller check, cwd).
-- No awk matrix (mawk/gawk/BWK); test.sh uses whatever `awk` is.
-- tmux-test.sh: dead check at line ~200, fixed sleeps, never asserts the popup
-  text, shares `/tmp/agent-sudo.*` with real requests.
-- Add cases: the reproduced gaps above, missing/empty rules file,
-  `HOME=/Users/tester`, `rm -rf /etc/`, `rm / -rf`, `sudo -s rm -rf /`.
+### Tests
+
+- **Fixed.** `t` takes `deny:REASON` / `warn:REASON` and checks the output
+  contains REASON; rule-based cases carry their reason. Deleting any single
+  rule from `rules` now fails at least one test (QA's run: five survived).
+- **Fixed.** tmux-test.sh: popups are counted through a log the harness
+  writes (the old "popup opened" check could never fire); each popup must show
+  a message built at run time (the typed command line can't satisfy it);
+  waits poll for the client and the popup instead of fixed sleeps; leftover
+  request dirs are counted against the start, so a real request running at
+  the same time doesn't fail it. Checked by mutation: a popup that doesn't
+  print the message, and one that picks a client of any session, both fail.
+- **Partly.** `prompt_mode` coverage: real-sudo cases now cover the caller
+  check, account home, prompt layout and refusal hint. Not covered: hidden
+  `/proc` fallback, cwd lookup via `lsof`.
+- **Open.** No awk matrix in `make test-agent-sudo` (done by hand on Linux:
+  gawk, mawk).
+- **Open.** Cases still to add: missing/empty rules file,
+  `HOME=/Users/tester`, `sudo -s rm -rf /`.
 
 ### Docs (to fix)
 

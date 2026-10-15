@@ -8,7 +8,7 @@
 #
 # Usage:
 #   askpass PROMPT                     called by sudo; prints the password
-#   askpass --check [--rules FILE] [--cwd DIR] [--] SUDO_ARGS...
+#   askpass --check [--rules FILE] [--cwd DIR] [--fold] [--] SUDO_ARGS...
 #                                      analyze a sudo command line; exit 1 if denied
 #   askpass --from-terminal            exit 0 if an ancestor has a terminal
 #                                      you own (used by the ~/bin/sudo shim)
@@ -190,6 +190,7 @@ function canon(p) {
 }
 function protected(p,   c) {
     c = canon(p)
+    if (fold) c = tolower(c)
     return (c in P) || c ~ /^\/mnt\/[a-z]$/
 }
 function emit(level, msg) {
@@ -200,6 +201,7 @@ function emit(level, msg) {
 function check_segment(   x, j, w, tok, rec, endopts, hits, tgts, del, np) {
     for (x = 1; x <= m; x++) {
         w = base(seg[x])
+        if (fold) w = tolower(w)
         if (w == "rm" || w == "chmod" || w == "chown" || w == "chgrp") {
             rec = 0; endopts = 0; hits = ""; tgts = ""
             for (j = x + 1; j <= m; j++) {
@@ -240,11 +242,12 @@ BEGIN {
     raw = ""; first = 1
     while ((getline l) > 0) { raw = first ? l : raw "\n" l; first = 0 }
     home = ENVIRON["AS_HOME"]; cwd = ENVIRON["AS_CWD"]; rules = ENVIRON["AS_RULES"]
-    envhome = ENVIRON["AS_ENVHOME"]
+    envhome = ENVIRON["AS_ENVHOME"]; fold = ENVIRON["AS_FOLD"] != ""
     n = split("/ /bin /boot /dev /etc /home /lib /lib32 /lib64 /libx32 /media /mnt /opt /proc /root /run /sbin /snap /srv /sys /tmp /usr /usr/bin /usr/lib /usr/local /usr/sbin /usr/share /var /var/lib /var/log /var/root /Applications /Library /System /Users /Volumes /cores /private /private/etc /private/tmp /private/var ~user ?relative", a, " ")
     for (i = 1; i <= n; i++) P[a[i]] = 1
     if (home != "") P[canon(home)] = 1
     if (envhome != "") P[canon(envhome)] = 1
+    if (fold) { for (k in P) L[tolower(k)] = 1; for (k in L) P[k] = 1 }
 
     # Normalized copy: drop quoting, split on shell command separators.
     s = raw
@@ -266,7 +269,8 @@ BEGIN {
             emit("deny", "malformed line " lineno " in " rules)
             continue
         }
-        if (raw ~ f[2] || norm ~ f[2]) emit(f[1], nf >= 3 ? f[3] : f[2])
+        if (raw ~ f[2] || norm ~ f[2] || (fold && (tolower(raw) ~ tolower(f[2]) || tolower(norm) ~ tolower(f[2]))))
+            emit(f[1], nf >= 3 ? f[3] : f[2])
     }
     if (r < 0) emit("warn", "rules file " rules " is missing; only built-in checks ran")
 
@@ -295,12 +299,16 @@ account_home() {
 
 # Analyze the command in "$@" (sudo options already removed). Sets DENIES and
 # WARNS to newline-separated reasons. Uses MODE, CWD, RULES_FILE, USER_HOME;
-# $HOME is protected too when it differs.
+# $HOME is protected too when it differs. On macOS (case-insensitive by
+# default, so "RM" runs rm) names, paths and rules are compared ignoring case;
+# FOLD=1 does the same elsewhere.
 analyze() {
+    fold=${FOLD-}
+    [ "$(uname -s)" = Darwin ] && fold=1
     # The command goes through stdin: an environment variable is capped at
     # 128 KB on Linux, and a failed awk must not mean "no findings".
     out=$(printf '%s' "$*" | AS_HOME="$USER_HOME" AS_ENVHOME="${HOME:-}" AS_CWD="$CWD" \
-        AS_RULES="$RULES_FILE" awk -v sq="'" "$AWK_PROG")
+        AS_RULES="$RULES_FILE" AS_FOLD="$fold" awk -v sq="'" "$AWK_PROG")
     st=$?
     [ "$st" -eq 0 ] || out="$out${NL}deny${TAB}rule analysis failed (awk exit $st)"
     case $MODE in
@@ -322,6 +330,7 @@ check_mode() {
         case $1 in
             --rules) RULES_FILE=$2; shift 2 ;;
             --cwd) CWD=$2; shift 2 ;;
+            --fold) FOLD=1; shift ;;
             --) shift; break ;;
             *) break ;;
         esac
@@ -425,9 +434,14 @@ dialog_kdialog() {
     esac
 }
 
+# Last resort: any failure, including "can't open display", counts as a
+# denial, because there is nothing left to try after it.
 dialog_sshaskpass() {
     for b in /usr/bin/ssh-askpass /usr/lib/ssh/x11-ssh-askpass /usr/lib/openssh/gnome-ssh-askpass /usr/bin/ksshaskpass; do
-        [ -x "$b" ] && { "$b" "$1"; return; }
+        [ -x "$b" ] || continue
+        out=$(with_timeout "$b" "$1") || return 1
+        printf '%s\n' "$out"
+        return 0
     done
     return 2
 }
@@ -542,7 +556,8 @@ get_password() {
                 fi
                 prompt_gui "$1"; rc=$? ;;
             tmux) prompt_tmux "$1"; rc=$? ;;
-            *) continue ;;
+            none) continue ;;
+            *) continue ;; # reported by prompt_mode
         esac
         [ "$rc" -eq 2 ] && continue
         return "$rc"
@@ -677,8 +692,14 @@ EOF
         case $CWD in /*) [ -d "$CWD" ] || CWD= ;; *) CWD= ;; esac
         [ -n "$CWD" ] && break
     done
+    # For the "run it yourself" hint: sudo's own options as given, minus the
+    # "-k -A" that agent-sudo adds.
+    hint=$(display_cmd "$@")
+    case $hint in "-k -A "*) hint=${hint#-k -A } ;; "-k -A") hint= ;; esac
     parse_sudo_opts "$@" # may set CWD from -D
     shift "$SKIP"
+    hint="sudo${hint:+ $hint}"
+    [ -z "$CWD" ] || hint="cd $(shquote "$CWD") && $hint"
 
     cmd=$(display_cmd "$@")
     logcmd=$(sanitize "$cmd" | tr '\n' ' ')
@@ -743,7 +764,12 @@ Enter your password to approve. Deny or close to refuse."
             printf '%s\n' "$pw" ;;
         3)
             log "no prompt available: $logcmd"
-            die "no way to ask for approval: no GUI dialog, and the agent is not in an attached tmux session. Run the agent inside tmux, or run this in a terminal outside the agent (not with ! in Claude Code): sudo $(sanitize "$cmd")" ;;
+            bad=
+            for m in ${AGENT_SUDO_PROMPT:-}; do
+                case $m in gui | tmux | none) ;; *) bad="$bad${bad:+ }$m" ;; esac
+            done
+            [ -z "$bad" ] || printf 'agent-sudo: AGENT_SUDO_PROMPT has unknown value(s): %s (use gui, tmux or none, separated by spaces)\n' "$(sanitize "$bad")" >&2
+            die "no way to ask for approval: no GUI dialog, and the agent is not in an attached tmux session. Run the agent inside tmux, or run this in a terminal outside the agent (not with ! in Claude Code): $(sanitize "$hint")" ;;
         *)
             log "cancelled: $logcmd"
             die "denied by user" ;;

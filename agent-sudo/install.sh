@@ -19,6 +19,7 @@ src=$(cd "$(dirname "$0")" && pwd)
 libdir=/usr/local/libexec/agent-sudo
 conf=/etc/sudo.conf
 line="Path askpass $libdir/askpass"
+askpass_re='^[[:space:]]*Path[[:space:]]+askpass[[:space:]]'
 # source-file:installed-path
 FILES="askpass:$libdir/askpass rules:$libdir/rules agent-sudo:/usr/local/bin/agent-sudo"
 
@@ -37,7 +38,13 @@ if [ "${1-}" = --check ]; then
             status=1
         fi
     done
-    if ! grep -Eq '^[[:space:]]*Path[[:space:]]+askpass[[:space:]]' "$conf" 2>/dev/null; then
+    if grep -Fqx "$line" "$conf" 2>/dev/null; then
+        :
+    elif grep -Eq "$askpass_re" "$conf" 2>/dev/null; then
+        # Warn only: install leaves another helper's line alone, so failing
+        # here would ask for the password on every make update.
+        echo "agent-sudo: note: $conf names a different askpass; plain sudo from agents won't use this one" >&2
+    else
         echo "agent-sudo: $conf has no askpass line"
         status=1
     fi
@@ -120,7 +127,7 @@ done
 # without -A when a GUI display is present; terminal sudo is unaffected.
 if grep -Fqx "$line" "$conf" 2>/dev/null; then
     :
-elif grep -Eq '^[[:space:]]*Path[[:space:]]+askpass[[:space:]]' "$conf" 2>/dev/null; then
+elif grep -Eq "$askpass_re" "$conf" 2>/dev/null; then
     echo "note: $conf already sets a different askpass; left unchanged" >&2
 else
     printf '\n# Added by dotfiles agent-sudo: approval prompt when sudo has no terminal\n%s\n' "$line" >>"$conf"

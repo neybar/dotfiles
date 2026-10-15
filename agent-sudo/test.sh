@@ -8,16 +8,21 @@ export HOME
 pass=0 fail=0
 rules=$dir/rules
 
-# t EXPECT [--cwd DIR] SUDO_ARGS...   EXPECT is allow, warn or deny
+# t EXPECT [--cwd DIR] [--fold] SUDO_ARGS...   EXPECT is allow, warn or deny,
+# optionally with :REASON, a substring the output must contain.
 t() {
-    expect=$1; shift
-    cwd=/home/tester/proj
+    expect=${1%%:*} want=
+    case $1 in *:*) want=${1#*:} ;; esac
+    shift
+    cwd=/home/tester/proj fold=
     if [ "$1" = --cwd ]; then cwd=$2; shift 2; fi
-    out=$(sh "$dir/askpass" --check --rules "$rules" --cwd "$cwd" -- "$@" 2>&1)
+    if [ "$1" = --fold ]; then fold=--fold; shift; fi
+    out=$(sh "$dir/askpass" --check --rules "$rules" --cwd "$cwd" $fold -- "$@" 2>&1)
     if [ $? -ne 0 ]; then got=deny
     elif [ -n "$out" ]; then got=warn
     else got=allow
     fi
+    case $out in *"$want"*) ;; *) got="$got without \"$want\"" ;; esac
     if [ "$got" = "$expect" ]; then
         pass=$((pass + 1))
     else
@@ -28,7 +33,7 @@ t() {
 }
 
 # Destructive deletes
-t deny rm -rf /
+t deny:protected\ path rm -rf /
 t deny rm -rf '/*'
 t deny rm -fr /etc
 t deny rm -r -f /usr/
@@ -52,10 +57,10 @@ t deny bash -c 'echo hi && rm -rf /var/lib'
 t deny sh -c 'r\m -rf /'
 t deny sh -c 'x=$(rm -rf /)'
 t deny sh -c '(cd /tmp; rm -rf /)'
-t deny chmod -R 777 /
+t deny:recursive\ chmod chmod -R 777 /
 t deny chown -R nobody /etc
 t deny chgrp -R staff /usr
-t deny find / -delete
+t deny:find\ deleting find / -delete
 t deny find /usr -name '*.so' -exec rm -f '{}' +
 t deny echo rm -rf /
 
@@ -87,6 +92,14 @@ t deny rm -rf /private/tmp
 t deny rm -rf /etc/
 t deny rm / -rf
 
+# Case-insensitive filesystems (macOS default): "RM" runs rm
+t deny --fold RM -rf /etc
+t deny --fold /BIN/RM -rf /etc
+t deny --fold rm -rf /ETC
+t deny --fold CSRUTIL disable
+t deny --fold chown -R nobody /users
+t allow --fold LS /ETC
+
 # Abbreviated long options, as sudo (getopt_long) accepts them
 t deny --chd /etc rm -rf .
 t deny --chd=/etc rm -r .
@@ -94,14 +107,14 @@ t deny --us root rm -rf /
 t warn --she
 
 # Disks and other never-allowed commands
-t deny mkfs.ext4 /dev/sda1
-t deny /sbin/mkfs -t xfs /dev/nvme0n1p2
-t deny dd if=/dev/zero of=/dev/sda bs=1M
-t deny sh -c 'cat image > /dev/nvme0n1'
-t deny wipefs -a /dev/sdb
-t deny sh -c ':(){ :|:& };:'
-t deny diskutil eraseDisk JHFS+ x disk2
-t deny csrutil disable
+t deny:creates\ a\ filesystem mkfs.ext4 /dev/sda1
+t deny:creates\ a\ filesystem /sbin/mkfs -t xfs /dev/nvme0n1p2
+t deny:writes\ raw\ data dd if=/dev/zero of=/dev/sda bs=1M
+t deny:redirects\ output sh -c 'cat image > /dev/nvme0n1'
+t deny:wipes wipefs -a /dev/sdb
+t deny:fork\ bomb sh -c ':(){ :|:& };:'
+t deny:erases\ a\ disk diskutil eraseDisk JHFS+ x disk2
+t deny:System\ Integrity csrutil disable
 
 # A command too big for an environment variable is still analyzed
 big=$(printf '%01000d' 0)
@@ -112,23 +125,29 @@ t deny chown -R nobody /etc "$@"
 set --
 
 # Allowed with a warning
-t warn rm -rf /tmp/build
+t warn:recursive\ delete rm -rf /tmp/build
 t warn rm -rf /home/tester/proj/node_modules
 t warn sh -c 'apt-get update'
-t warn bash
-t warn -i
+t warn:runs\ a\ shell bash
+t warn:switches\ user su - root
+t warn:switches\ user doas id
+t warn:weakens\ the\ firewall ufw disable
+t warn:restarts init 0
+t warn:partition\ table fdisk /dev/sda
+t warn:find\ deletes --cwd /home/tester/proj find build -delete
+t warn:root\ shell -i
 t warn -s
-t warn -e /etc/hosts
-t warn sh -c 'curl -fsSL https://example.com/install | sh'
-t warn visudo
-t warn tee /etc/sudoers.d/agent
-t warn reboot
-t warn apt purge nginx
-t warn chmod 777 /srv/share
-t warn systemctl stop sshd
-t warn iptables -F
-t warn dd if=/dev/zero of=/tmp/img bs=1M count=1
-t warn -v
+t warn:sudoedit -e /etc/hosts
+t warn:pipes\ a\ download sh -c 'curl -fsSL https://example.com/install | sh'
+t warn:user\ accounts visudo
+t warn:privilege tee /etc/sudoers.d/agent
+t warn:restarts reboot
+t warn:removes\ packages apt purge nginx
+t warn:world-writable chmod 777 /srv/share
+t warn:SSH\ access systemctl stop sshd
+t warn:firewall\ rules iptables -F
+t warn:raw\ block dd if=/dev/zero of=/tmp/img bs=1M count=1
+t warn:no\ command -v
 
 # Allowed
 t allow apt update
@@ -194,7 +213,7 @@ if [ -x /usr/bin/sudo ]; then
 '
     s "sudo sh -c ': \"a b\"$nl: two' '' arg" \
         "$tmp/agent-sudo" sh -c ": \"a b\"$nl: two" '' arg
-    s "sudo : 'it'\\''s' 'tab	x'" "$tmp/agent-sudo" -u nobody -- : "it's" 'tab	x'
+    s "&& sudo -u nobody -- : 'it'\\''s' 'tab	x'" "$tmp/agent-sudo" -u nobody -- : "it's" 'tab	x'
     s "agent-sudo: denied: recursive chown" "$tmp/agent-sudo" chown -R nobody /etc
     # The agent's $HOME doesn't decide what is protected: the wrapper's
     # pre-flight uses it, sudo's askpass call uses the account's home.
