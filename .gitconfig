@@ -120,3 +120,13 @@
 	newHighlight = green bold 22
 [diff-so-fancy]
     stripLeadingSymbols = false
+
+# Sign commits with the "GitHub (personal)" ssh key held in 1Password. This is
+# the public half; the signature itself comes from the 1Password agent, local
+# or forwarded. macOS sets gpg.ssh.program to op-ssh-sign in ~/.gitconfig.
+[gpg]
+	format = ssh
+[user]
+	signingkey = ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIA52N13pE7Bz8Ek7iEnaoye+8+L+uChJ5QKdIGj0g8Er
+[commit]
+	gpgsign = true
