@@ -12,7 +12,7 @@ listen=$1
 # Print the path of the newest forwarded agent socket that accepts a connection.
 find_agent() {
     local s
-    for s in /tmp/ssh-*/agent.*(=Uom) ~/.ssh/agent/*(=Uom); do
+    for s in /tmp/ssh-*/agent.*(=Uom) ~/.ssh/agent/*.sshd.*(=Uom); do
         [[ -O ${s:h} ]] || continue
         if zsocket $s 2>/dev/null; then
             exec {REPLY}>&-

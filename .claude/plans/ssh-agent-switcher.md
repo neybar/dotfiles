@@ -111,11 +111,11 @@ chrisdown.name/2013/08/02/fixing-stale-ssh-sockets-in-tmux.html
 
 ## Prototype: pure-zsh proxy
 
-Script: `.claude/plans/ssh-agent-proxy` (next to this file; untracked, not committed).
+Script: `.claude/plans/ssh-agent-proxy` (next to this file; committed on this branch).
 Usage: `ssh-agent-proxy <listen-socket>`. Uses zsh/net/socket, zsh/zselect, zsh/system.
 - Listens with `zsocket -l`; forks a child per connection.
 - Per connection, picks the newest live socket from `/tmp/ssh-*/agent.*` (parent dir
-  must be owned by the user) then `~/.ssh/agent/*`; "live" = `zsocket` connect succeeds.
+  must be owned by the user) then `~/.ssh/agent/*.sshd.*`; "live" = `zsocket` connect succeeds.
   Newest-first ordering is per location, not across both.
 - Relays with `zselect` + `sysread`/`syswrite` (multibyte off, partial writes handled).
 - Exits if the listen socket already answers; removes it if dead.
@@ -128,36 +128,32 @@ Usage: `ssh-agent-proxy <listen-socket>`. Uses zsh/net/socket, zsh/zselect, zsh/
 - `zsocket -l` mangled a 107-byte socket path (created `proxy.sockY`). Linux sun_path is
   108, macOS 104. `/tmp/ssh-agent.$USER` is well under; keep any override short.
 
+### Results on narsil (macOS, /bin/zsh 5.9, OpenSSH 10.3p1)
+Tested with a throwaway `ssh-agent` in `/tmp/ssh-mactest/`, not 1Password.
+- The three modules load. `ssh-add -l` through the proxy matches direct;
+  `ssh-keygen -Y sign` via the proxy verifies.
+- **Bug, fixed:** the `~/.ssh/agent/*` glob matched macOS's own launchd ssh-agent
+  (OpenSSH 10.x puts it at `~/.ssh/agent/s.*.agent.*`). Here that agent accepts a
+  connection and never answers (a direct `ssh-add -l` hangs too), so every request
+  through the proxy hung. The glob is now `~/.ssh/agent/*.sshd.*` (sshd-forwarded
+  sockets only, same as ssh-agent-switcher). Linux will hit this too once its
+  OpenSSH is 10.x and a local ssh-agent runs. Any upstream that accepts and then
+  never answers still hangs the client (ssh-agent-switcher behaves the same).
+- No live upstream (after the fix): `ssh-add` fails in ~13 ms ("communication with
+  agent failed", rc=1). Upstream killed mid-session: next request fails fast; a new
+  agent appearing is picked up on the next connection.
+- **Limitation, unfixed:** 20 parallel `ssh-add -l` → 12 got "Connection refused".
+  `zsocket -l` uses a listen backlog of 1 (confirmed: with no accept, only 1 of 10
+  connects queues). Linux blocks the extra clients, macOS refuses them, and zsh can't
+  change the backlog. Only matters if a Mac is the ssh *target*, where the proxy
+  would run.
+- `zsocket -l` with a path of 104+ bytes silently truncates to 103, no error. When
+  wiring in, refuse long listen paths instead of relying on this.
+
 ### Not yet tested
-- No live upstream (expected: client connection closed, ssh-add errors instead of hanging).
-- Upstream login disconnecting mid-session.
-- macOS zsh (see below).
 - Tailscale sockets (`/tmp/auth-agent*/listener.sock`): still excluded; root-owned dir.
-
-## Next: verify on macOS
-
-Get the files: `git fetch && git checkout fix/ssh-agent-self-heal` in the dotfiles clone; run from `.claude/plans/`.
-Use a short scratch dir (macOS `$TMPDIR` paths are long; sun_path limit is 104).
-
-1. `zsh --version`; `zsh -c 'zmodload zsh/net/socket zsh/zselect zsh/system && echo ok'`
-   (check both /bin/zsh and any Homebrew zsh that is the login shell).
-2. Relay test without 1Password, using a throwaway agent the discovery glob will find:
-   ```
-   mkdir -m700 /tmp/ssh-mactest
-   eval $(ssh-agent -a /tmp/ssh-mactest/agent.test)
-   ssh-keygen -t ed25519 -N '' -f /tmp/ssh-mactest/key && ssh-add /tmp/ssh-mactest/key
-   ./ssh-agent-proxy /tmp/pxy.sock &!
-   SSH_AUTH_SOCK=/tmp/pxy.sock ssh-add -l
-   echo hi > /tmp/ssh-mactest/msg
-   SSH_AUTH_SOCK=/tmp/pxy.sock ssh-keygen -Y sign -f /tmp/ssh-mactest/key.pub -n git /tmp/ssh-mactest/msg
-   ```
-   Then 20 parallel `ssh-add -l`, and kill the proxy + agent (`ssh-agent -k`), clean up.
-3. No-upstream case: with the throwaway agent killed, `SSH_AUTH_SOCK=/tmp/pxy.sock ssh-add -l`
-   should fail fast, not hang.
-4. Does `zsocket -l` mangle paths near 104 bytes on macOS too?
-5. Note: on macOS at the keyboard the daemon is not meant to run; SSH_AUTH_SOCK stays on the
-   1Password socket. This test only confirms the script would work if a Mac were the
-   ssh *target*.
+- WSL.
+- Real forwarded login on Linux with the `*.sshd.*` glob (OpenSSH 10.1+ naming).
 
 ## Still to decide before wiring into dotfiles
 - Script location: `zsh_custom/` vs `bin/`.
