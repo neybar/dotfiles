@@ -166,3 +166,7 @@ Use a short scratch dir (macOS `$TMPDIR` paths are long; sun_path limit is 104).
   with macOS / desktop sessions.
 - Include Tailscale sockets or not (open question 3 above).
 - `.bash_profile`: probably just drop the symlink logic.
+- WSL (added on master in e55d115): at the keyboard, `ssh-agent.zsh` starts a socat +
+  npiperelay.exe bridge to `~/.1password/agent.sock`. That's the local case, so the
+  proxy shouldn't touch it, but the rewrite of `ssh-agent.zsh` must keep the bridge.
+  Three targets to check, not two: macOS, Linux (desktop and ssh), WSL.
