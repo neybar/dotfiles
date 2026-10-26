@@ -1,0 +1,68 @@
+#!/usr/bin/env zsh
+# Prototype: listen on a fixed socket and pass each connection through to
+# whichever forwarded ssh agent is live at that moment (newest first).
+# Usage: ssh-agent-proxy <listen-socket>
+
+zmodload zsh/net/socket zsh/zselect zsh/system || exit 1
+setopt extendedglob nullglob
+unsetopt multibyte          # byte-wise string slicing for binary data
+
+listen=$1
+
+# Print the path of the newest forwarded agent socket that accepts a connection.
+find_agent() {
+    local s
+    for s in /tmp/ssh-*/agent.*(=Uom) ~/.ssh/agent/*(=Uom); do
+        [[ -O ${s:h} ]] || continue
+        if zsocket $s 2>/dev/null; then
+            exec {REPLY}>&-
+            print -r -- $s
+            return 0
+        fi
+    done
+    return 1
+}
+
+# Write all of $2 to fd $1, handling partial writes.
+write_all() {
+    local fd=$1 data=$2 n
+    while (( $#data )); do
+        syswrite -c n -o $fd -- $data || return 1
+        data=${data[n+1,-1]}
+    done
+}
+
+# Shuttle bytes between client fd $1 and the upstream agent until either side closes.
+relay() {
+    local cfd=$1 ufd up buf
+    local -A ready
+    up=$(find_agent) || return 1
+    zsocket $up || return 1
+    ufd=$REPLY
+    while zselect -A ready -r $cfd $ufd; do
+        if [[ -n ${ready[$cfd]} ]]; then
+            sysread -i $cfd -s 65536 buf || return 0
+            write_all $ufd $buf || return 1
+        fi
+        if [[ -n ${ready[$ufd]} ]]; then
+            sysread -i $ufd -s 65536 buf || return 0
+            write_all $cfd $buf || return 1
+        fi
+    done
+}
+
+# Refuse to start if another proxy is already serving this path.
+if [[ -S $listen ]]; then
+    zsocket $listen 2>/dev/null && { print -u2 "already running: $listen"; exit 0; }
+    rm -f $listen
+fi
+
+umask 077
+zsocket -l $listen || exit 1
+lfd=$REPLY
+
+while zsocket -a $lfd; do
+    cfd=$REPLY
+    ( exec {lfd}>&-; relay $cfd ) &!
+    exec {cfd}>&-
+done
