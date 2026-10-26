@@ -19,7 +19,7 @@ Personal dotfiles for both macOS and Linux (both are first-class targets; change
 
 ## SSH and commit signing
 
-No private keys on disk; everything comes from the 1Password SSH agent (`zsh_custom/ssh-agent.zsh` makes it available, including inside tmux). Commits are SSH-signed with the 1Password "GitHub (personal)" key, so committing needs 1Password unlocked.
+No private keys on disk; everything comes from the 1Password SSH agent (`zsh_custom/ssh-agent.zsh` makes it available, including inside tmux; over ssh it points at `zsh_custom/ssh-agent-proxy`, which relays to the newest live forwarded agent). Commits are SSH-signed with the 1Password "GitHub (personal)" key, so committing needs 1Password unlocked.
 
 ## Brewfile
 

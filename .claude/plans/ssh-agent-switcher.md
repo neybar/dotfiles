@@ -111,7 +111,7 @@ chrisdown.name/2013/08/02/fixing-stale-ssh-sockets-in-tmux.html
 
 ## Prototype: pure-zsh proxy
 
-Script: `.claude/plans/ssh-agent-proxy` (next to this file; committed on this branch).
+Script: now `zsh_custom/ssh-agent-proxy` (see Wired in, below).
 Usage: `ssh-agent-proxy <listen-socket>`. Uses zsh/net/socket, zsh/zselect, zsh/system.
 - Listens with `zsocket -l`; forks a child per connection.
 - Per connection, picks the newest live socket (by mtime, across all locations) from
@@ -172,13 +172,42 @@ Tested from narsil with a non-interactive `ssh orcrist.tailcb20d4.ts.net '...'`
 - WSL.
 - Real forwarded login on Linux with the `*.sshd.*` glob (OpenSSH 10.1+ naming).
 
-## Still to decide before wiring into dotfiles
-- Script location: `zsh_custom/` vs `bin/`.
-- How `ssh-agent.zsh` starts it (over SSH only; restart if socket dead).
-- `.tmux.conf`: conditional SSH_AUTH_SOCK (not a blanket `setenv -g`), since it's shared
-  with macOS / desktop sessions.
-- `.bash_profile`: probably just drop the symlink logic.
-- WSL (added on master in e55d115): at the keyboard, `ssh-agent.zsh` starts a socat +
-  npiperelay.exe bridge to `~/.1password/agent.sock`. That's the local case, so the
-  proxy shouldn't touch it, but the rewrite of `ssh-agent.zsh` must keep the bridge.
-  Three targets to check, not two: macOS, Linux (desktop and ssh), WSL.
+## Wired in (2026-10-26)
+
+- `zsh_custom/ssh-agent-proxy` (moved from here; no `.zsh` suffix so oh-my-zsh doesn't
+  source it). Lives next to `ssh-agent.zsh`, so both are live via `ZSH_CUSTOM` and can't
+  drift; no `make copy` needed. Daemon additions: ignores HUP, refuses listen paths of
+  100+ bytes, exits within ~60 s if its socket is removed or replaced.
+- Socket is `~/.ssh/agent-proxy.sock`, not `/tmp/ssh-agent.$USER`: anyone can squat a
+  predictable `/tmp` name and receive our agent requests; nobody else can write `~/.ssh`.
+- `ssh-agent.zsh`: over ssh (`SSH_CONNECTION` set and a forwarded socket, or already on
+  the proxy path, e.g. a tmux pane), start the proxy if it doesn't answer and export its
+  path. Start is serialized with `zsystem flock` on `agent-proxy.sock.lock` (macOS has no
+  `flock(1)`); the lock fd is closed for the child; the shell waits until the socket
+  *answers* (a stale socket file exists before the new proxy replaces it). `setsid` when
+  available (Linux). At the keyboard: local 1Password socket, WSL bridge unchanged.
+  The `~/.ssh/ssh_auth_sock` symlink is gone.
+- `.tmux.conf`: dropped `setenv -g SSH_AUTH_SOCK`; SSH_AUTH_SOCK stays out of
+  `update-environment`. `.bash_profile`: dropped the symlink lines, kept tmux autostart.
+
+### Tested
+- macOS (throwaway HOME and agent): keyboard → 1Password socket; over ssh → proxy, keys
+  listed; proxy killed (stale socket file left) → next shell restarts it and works; socket
+  file also gone → restarted; 10 shells at once with proxy dead, 3 rounds → one proxy
+  each time, all 10 got keys; 100-byte path refused; socket removed → proxy exits.
+- orcrist over Tailscale SSH (throwaway HOME, files in a temp dir): proxy started in
+  session 1 survived that session ending (own session via setsid); session 2 used it and
+  got keys through session 2's socket.
+
+### Still to test (interactive, on orcrist)
+After `git pull` there, new zsh shells use the new code; `make copy` for `.tmux.conf`.
+Existing tmux panes still point at `~/.ssh/ssh_auth_sock`; to keep them working until
+they're replaced: `ln -sfn ~/.ssh/agent-proxy.sock ~/.ssh/ssh_auth_sock`, delete later.
+1. Fresh ssh login (sshd, not Tailscale): `echo $SSH_AUTH_SOCK` is the proxy path;
+   `ssh-add -l` works; `pgrep -fl ssh-agent-proxy` shows one.
+2. Same over Tailscale SSH (`ssh orcrist.tailcb20d4.ts.net`).
+3. tmux: detach, log in again from another login, reattach; old and new panes both
+   `ssh-add -l`.
+4. Two logins; close the newer one; signing still works from the remaining one
+   (`git commit --allow-empty -m test` in a scratch repo, approve in 1Password).
+5. WSL (keyboard path + bridge) and Linux desktop (keyboard path) still get 1Password.

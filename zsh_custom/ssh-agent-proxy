@@ -1,7 +1,8 @@
 #!/usr/bin/env zsh
-# Prototype: listen on a fixed socket and pass each connection through to
-# whichever forwarded ssh agent is live at that moment (newest first).
-# Usage: ssh-agent-proxy <listen-socket>
+# Listen on a fixed socket and pass each connection through to whichever
+# forwarded ssh agent is live at that moment (newest first), so shells and
+# tmux panes keep a working SSH_AUTH_SOCK across logins coming and going.
+# Started by ssh-agent.zsh over ssh. Usage: ssh-agent-proxy <listen-socket>
 
 zmodload zsh/net/socket zsh/zselect zsh/system || exit 1
 zmodload -F zsh/stat b:zstat || exit 1
@@ -9,6 +10,9 @@ setopt extendedglob nullglob
 unsetopt multibyte          # byte-wise string slicing for binary data
 
 listen=$1
+# zsocket silently truncates paths near sun_path (104 bytes on macOS).
+(( $#listen && $#listen < 100 )) || { print -u2 "bad socket path: $listen"; exit 1; }
+trap '' HUP                 # outlive the login that started us
 
 # Print the path of the newest forwarded agent socket that accepts a connection.
 # Candidates must be our own sockets: sshd's in a dir we own, Tailscale SSH's
@@ -73,8 +77,15 @@ fi
 umask 077
 zsocket -l $listen || exit 1
 lfd=$REPLY
+zstat -A ino +inode $listen || exit 1
 
-while zsocket -a $lfd; do
+while :; do
+    if ! zselect -t 6000 -r $lfd; then
+        # Exit if our socket was removed or replaced, so we don't linger.
+        zstat -A t +inode $listen 2>/dev/null && (( t[1] == ino[1] )) || exit 0
+        continue
+    fi
+    zsocket -a $lfd || exit 1
     cfd=$REPLY
     ( exec {lfd}>&-; relay $cfd ) &!
     exec {cfd}>&-

@@ -75,20 +75,13 @@ test -e "${HOME}/.iterm2_shell_integration.bash" && source "${HOME}/.iterm2_shel
 export FZF_DEFAULT_COMMAND='ag --hidden --ignore .git -g ""'
 export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
 
-# Setup ssh agent so it works across tmux sessions
+# Start tmux on ssh logins (zsh_custom/ssh-agent.zsh sets up the ssh agent)
 # export NO_TMUX=1 in ~/.system or ~/.extra if you don't want to automatically start tmux
 if [ -z "$NO_TMUX"  ] && [ -z "$TMUX"  ]; then
     # we're not in a tmux session
 
     if [ ! -z "$SSH_TTY" ]; then
         # We logged in via SSH
-
-        # Check and see if we have a socket, and that it isn't already
-        # a link.  If it isn't a link then make it one.
-        if [ -S "$SSH_AUTH_SOCK" ] && [ ! -h "$SSH_AUTH_SOCK" ]; then
-            ln -sf "$SSH_AUTH_SOCK" ~/.ssh/ssh_auth_sock
-        fi
-        export SSH_AUTH_SOCK=~/.ssh/ssh_auth_sock
 
         # start tmux (boo, only works this way with tmux 2.0)
         tmux new-session -A -s main
