@@ -199,15 +199,21 @@ Tested from narsil with a non-interactive `ssh orcrist.tailcb20d4.ts.net '...'`
   session 1 survived that session ending (own session via setsid); session 2 used it and
   got keys through session 2's socket.
 
-### Still to test (interactive, on orcrist)
-After `git pull` there, new zsh shells use the new code; `make copy` for `.tmux.conf`.
-Existing tmux panes still point at `~/.ssh/ssh_auth_sock`; to keep them working until
-they're replaced: `ln -sfn ~/.ssh/agent-proxy.sock ~/.ssh/ssh_auth_sock`, delete later.
-1. Fresh ssh login (sshd, not Tailscale): `echo $SSH_AUTH_SOCK` is the proxy path;
-   `ssh-add -l` works; `pgrep -fl ssh-agent-proxy` shows one.
-2. Same over Tailscale SSH (`ssh orcrist.tailcb20d4.ts.net`).
-3. tmux: detach, log in again from another login, reattach; old and new panes both
-   `ssh-add -l`.
-4. Two logins; close the newer one; signing still works from the remaining one
-   (`git commit --allow-empty -m test` in a scratch repo, approve in 1Password).
-5. WSL (keyboard path + bridge) and Linux desktop (keyboard path) still get 1Password.
+### Deployed and tested on orcrist (2026-10-26)
+Pulled + `make copy` by the user. The proxy was first started via the real `ssh-agent.zsh`;
+then `~/.ssh/ssh_auth_sock` was repointed at `~/.ssh/agent-proxy.sock` so pre-existing tmux
+panes go through the proxy (undo: relink to the sshd socket; delete the link once those
+panes are gone). Tests driven from narsil with `ssh -tt` (real interactive zsh):
+1. Fresh sshd login (LAN, 192.168.0.3): proxy path, 4 keys, still one proxy. ✅
+2. Fresh Tailscale SSH login: same. ✅
+3. tmux (separate `-L cltest` server, real `~/.tmux.conf`): pane made from a Tailscale
+   login, then attach + new pane from an sshd login; after both logins closed, both panes
+   used the proxy with 4 keys; the new pane had the sshd `SSH_CONNECTION`. ✅
+4. With all test logins closed, a pane's request went to the remaining older login
+   (`/tmp/ssh-0uHS64BpZt`), 4 keys. ✅
+5. `git commit --allow-empty` from a pane, approved in 1Password on narsil: rc=0;
+   `verify-commit` says Good "git" signature with GitHub (personal). ✅
+
+### Not tested
+- WSL (keyboard path + bridge): no WSL machine reachable from here.
+- Linux desktop keyboard path: orcrist has no desktop 1Password.
