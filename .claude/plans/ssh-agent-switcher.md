@@ -85,7 +85,7 @@ Alternatives considered:
 1. Go with ssh-agent-switcher?
 2. Install Rust via rustup here, or build the binary elsewhere?
 3. Is Tailscale SSH with agent forwarding a real workflow, or only used for those tests?
-   (Affects whether `--agents-dirs` or an alternative is needed.)
+   **Answered: yes, it's used.** The proxy must include Tailscale sockets.
 
 ## Loose ends
 
@@ -114,9 +114,10 @@ chrisdown.name/2013/08/02/fixing-stale-ssh-sockets-in-tmux.html
 Script: `.claude/plans/ssh-agent-proxy` (next to this file; committed on this branch).
 Usage: `ssh-agent-proxy <listen-socket>`. Uses zsh/net/socket, zsh/zselect, zsh/system.
 - Listens with `zsocket -l`; forks a child per connection.
-- Per connection, picks the newest live socket from `/tmp/ssh-*/agent.*` (parent dir
-  must be owned by the user) then `~/.ssh/agent/*.sshd.*`; "live" = `zsocket` connect succeeds.
-  Newest-first ordering is per location, not across both.
+- Per connection, picks the newest live socket (by mtime, across all locations) from
+  `/tmp/ssh-*/agent.*` and `~/.ssh/agent/*.sshd.*` (dir owned by the user) and
+  `/tmp/auth-agent*/listener.sock` (Tailscale SSH; dir owned by root). Sockets must be
+  owned by the user. "live" = `zsocket` connect succeeds.
 - Relays with `zselect` + `sysread`/`syswrite` (multibyte off, partial writes handled).
 - Exits if the listen socket already answers; removes it if dead.
 
@@ -150,8 +151,24 @@ Tested with a throwaway `ssh-agent` in `/tmp/ssh-mactest/`, not 1Password.
 - `zsocket -l` with a path of 104+ bytes silently truncates to 103, no error. When
   wiring in, refuse long listen paths instead of relying on this.
 
+### Results on orcrist over Tailscale SSH (tailscaled 1.104.2)
+Tested from narsil with a non-interactive `ssh orcrist.tailcb20d4.ts.net '...'`
+(never sources `ssh-agent.zsh`), proxy on a mktemp socket, not `/tmp/ssh-agent.$USER`.
+- Tailscale's socket is `/tmp/auth-agent<N>/listener.sock`, owned by the user, mode
+  600, in a root-owned 755 dir. Discovery now takes it only if the dir's owner is
+  root, so another user can't plant one.
+- With the older sshd login (`/tmp/ssh-0uHS64BpZt`) still live, the proxy picked the
+  Tailscale socket as newest. `ssh-add -l` via proxy = direct (4 keys); 20 parallel
+  all rc=0. `~/.ssh/ssh_auth_sock` was unchanged.
+- tailscaled never removes the `/tmp/auth-agent*` dirs, only the socket (Go
+  unlinks it on `Close()`). `gliderssh.NewAgentListener` makes the dir with
+  `os.MkdirTemp` and nothing removes it; tailssh.go even has
+  `TODO(maisem/bradfitz): add a way to close all session resources`. Harmless
+  (empty, tmpfiles clears /tmp), and the proxy skips dirs without a socket.
+- Tailscale SSH check mode: a login can print an approval URL; when the approval has
+  expired, a non-interactive login waits on it.
+
 ### Not yet tested
-- Tailscale sockets (`/tmp/auth-agent*/listener.sock`): still excluded; root-owned dir.
 - WSL.
 - Real forwarded login on Linux with the `*.sshd.*` glob (OpenSSH 10.1+ naming).
 
@@ -160,7 +177,6 @@ Tested with a throwaway `ssh-agent` in `/tmp/ssh-mactest/`, not 1Password.
 - How `ssh-agent.zsh` starts it (over SSH only; restart if socket dead).
 - `.tmux.conf`: conditional SSH_AUTH_SOCK (not a blanket `setenv -g`), since it's shared
   with macOS / desktop sessions.
-- Include Tailscale sockets or not (open question 3 above).
 - `.bash_profile`: probably just drop the symlink logic.
 - WSL (added on master in e55d115): at the keyboard, `ssh-agent.zsh` starts a socat +
   npiperelay.exe bridge to `~/.1password/agent.sock`. That's the local case, so the

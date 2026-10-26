@@ -4,16 +4,29 @@
 # Usage: ssh-agent-proxy <listen-socket>
 
 zmodload zsh/net/socket zsh/zselect zsh/system || exit 1
+zmodload -F zsh/stat b:zstat || exit 1
 setopt extendedglob nullglob
 unsetopt multibyte          # byte-wise string slicing for binary data
 
 listen=$1
 
 # Print the path of the newest forwarded agent socket that accepts a connection.
+# Candidates must be our own sockets: sshd's in a dir we own, Tailscale SSH's
+# in a root-owned dir (so no other user can plant one there).
 find_agent() {
-    local s
-    for s in /tmp/ssh-*/agent.*(=Uom) ~/.ssh/agent/*.sshd.*(=Uom); do
-        [[ -O ${s:h} ]] || continue
+    local s t
+    local -a keyed
+    for s in /tmp/ssh-*/agent.*(=U) ~/.ssh/agent/*.sshd.*(=U) \
+             /tmp/auth-agent*/listener.sock(=U); do
+        if [[ $s == /tmp/auth-agent* ]]; then
+            zstat -A t +uid ${s:h} && (( t[1] == 0 )) || continue
+        else
+            [[ -O ${s:h} ]] || continue
+        fi
+        zstat -A t +mtime $s && keyed+=("$t[1]:$s")
+    done
+    for s in ${(On)keyed}; do
+        s=${s#*:}
         if zsocket $s 2>/dev/null; then
             exec {REPLY}>&-
             print -r -- $s
