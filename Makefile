@@ -36,9 +36,10 @@ diff:
 		  --exclude ".zshrc.local" \
 		  --exclude "Makefile" \
 		  --exclude "README.md" \
+		  --exclude "CLAUDE.md" \
 		  --exclude "LICENSE-MIT.txt" \
 		  --exclude "oh-my-zsh" \
-		  --exclude "zsh-custom" \
+		  --exclude "zsh_custom" \
 		  --exclude "init" \
 		  --exclude "agent-sudo" \
 		  --exclude ".zshrc" \
@@ -48,7 +49,7 @@ diff-long:
 	@echo "Detailed diffs for changed dotfiles:"
 	@bash -c 'for file in {,.}*; do \
 	  case "$$file" in \
-	    .|..|.git|.DS_Store|.gitignore|.gitconfig|.zshrc.local|Makefile|README.md|LICENSE*|oh-my-zsh|zsh-custom|init|agent-sudo|.zshrc) continue ;; \
+	    .|..|.git|.DS_Store|.gitignore|.gitconfig|.zshrc.local|Makefile|README.md|CLAUDE.md|LICENSE*|oh-my-zsh|zsh_custom|init|agent-sudo|.zshrc) continue ;; \
 	  esac; \
 	  [ -f "$$file" ] || continue; \
 	  [ -f "$$HOME/$$file" ] || continue; \
@@ -66,9 +67,10 @@ copy:
 		  --exclude ".zshrc.local" \
 		  --exclude "Makefile" \
 		  --exclude "README.md" \
+		  --exclude "CLAUDE.md" \
 		  --exclude "LICENSE-MIT.txt" \
 		  --exclude "oh-my-zsh" \
-		  --exclude "zsh-custom" \
+		  --exclude "zsh_custom" \
 		  --exclude "init" \
 		  --exclude "agent-sudo" \
 		  --exclude ".zshrc" \

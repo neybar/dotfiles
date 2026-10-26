@@ -68,20 +68,18 @@ cask 'betterzip'
 cask 'betterdisplay'
 cask 'chrome'
 cask 'dropbox'
-cask 'disk-inventory-x'
 cask 'firefox'
+cask 'grandperspective' # disk usage visualizer
 cask 'imageoptim'
 cask 'istat-menus'
 cask 'iterm2'
 cask 'keybase'
-cask 'macdown'
-cask 'qlcolorcode'    # Quicklook plugin for code colorizing
-cask 'qlimagesize'    # Quicklook plugin for image sizes
-cask 'qlmarkdown'     # Quicklook plugin for mark down
-cask 'qlvideo'        # Quicklook plugin for video preview
-cask 'quicklook-json' # Quicklook plugin for JSON formatting
+cask 'macdown-3000'
+cask 'qlmarkdown'       # Quicklook plugin for mark down
+cask 'quicklook-video'  # Quicklook plugin for video preview
 cask 'slack'
 cask 'steam'
+cask 'syntax-highlight' # Quicklook plugin for code colorizing
 # cask 'scroll-reverser' #allows mouse and trackpad to have separate scroll directions
 cask 'transmission'
 cask 'viscosity' # https://sparklabs.com/viscosity VPN client
