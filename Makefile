@@ -30,6 +30,7 @@ fetch:
 diff:
 	@echo "Files that would be changed:"
 	@rsync --exclude ".git/" \
+		  --exclude ".claude" \
 		  --exclude ".DS_Store" \
 		  --exclude ".gitignore" \
 		  --exclude ".gitconfig" \
@@ -48,7 +49,7 @@ diff-long:
 	@echo "Detailed diffs for changed dotfiles:"
 	@bash -c 'for file in {,.}*; do \
 	  case "$$file" in \
-	    .|..|.git|.DS_Store|.gitignore|.gitconfig|.zshrc.local|Makefile|README.md|LICENSE*|oh-my-zsh|zsh-custom|init|agent-sudo|.zshrc) continue ;; \
+	    .|..|.git|.claude|.DS_Store|.gitignore|.gitconfig|.zshrc.local|Makefile|README.md|LICENSE*|oh-my-zsh|zsh-custom|init|agent-sudo|.zshrc) continue ;; \
 	  esac; \
 	  [ -f "$$file" ] || continue; \
 	  [ -f "$$HOME/$$file" ] || continue; \
@@ -60,6 +61,7 @@ diff-long:
 
 copy:
 	@rsync --exclude ".git/" \
+		  --exclude ".claude" \
 		  --exclude ".DS_Store" \
 		  --exclude ".gitignore" \
 		  --exclude ".gitconfig" \
