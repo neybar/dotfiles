@@ -1,0 +1,84 @@
+{
+  "version": 4,
+  "lines": [
+    [
+      {
+        "id": "1",
+        "type": "vim-mode",
+        "color": "cyan"
+      },
+      {
+        "id": "97692af4-dcd5-4c01-aae4-06ba08a82162",
+        "type": "current-working-dir",
+        "backgroundColor": "bgBrightRed"
+      },
+      {
+        "id": "5",
+        "type": "git-branch",
+        "color": "magenta"
+      },
+      {
+        "id": "7",
+        "type": "git-changes",
+        "color": "yellow"
+      }
+    ],
+    [
+      {
+        "id": "06b52c5e-6459-400f-9e40-6488a849c7a3",
+        "type": "model",
+        "backgroundColor": "bgYellow"
+      },
+      {
+        "id": "e1eec1e7-629d-42f8-849d-c55f4a2a851d",
+        "type": "thinking-effort",
+        "backgroundColor": "bgGreen"
+      },
+      {
+        "id": "01f9db6f-4fde-4a58-9a27-5373d87be038",
+        "type": "output-style",
+        "backgroundColor": "bgBrightBlack"
+      }
+    ],
+    [
+      {
+        "id": "23d75264-0795-4558-ac26-b5d92924e22a",
+        "type": "tokens-total",
+        "backgroundColor": "bgGreen"
+      },
+      {
+        "id": "aedb452d-1a14-4572-b5dc-944ac071a7e5",
+        "type": "context-bar",
+        "backgroundColor": "bgBlue"
+      },
+      {
+        "id": "2730b846-f99d-4f2f-8a0c-6d8fc4665d39",
+        "type": "session-cost",
+        "backgroundColor": "bgBrightMagenta"
+      }
+    ]
+  ],
+  "flexMode": "full-minus-40",
+  "compactThreshold": 60,
+  "colorLevel": 3,
+  "inheritSeparatorColors": false,
+  "globalBold": false,
+  "powerline": {
+    "enabled": true,
+    "separators": [
+      ""
+    ],
+    "separatorInvertBackground": [
+      false
+    ],
+    "startCaps": [
+      ""
+    ],
+    "endCaps": [
+      ""
+    ],
+    "autoAlign": false,
+    "theme": "solarized"
+  },
+  "defaultPadding": " "
+}

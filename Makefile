@@ -108,7 +108,11 @@ install: copy bootstrap-omz sync-agent-sudo sync-claude
 # previous file is saved as settings.json.prev first, to see or undo the merge.
 # claude/settings.darwin.json (iTerm cc-status hooks) is merged on macOS only,
 # and only when ~/.config/iterm2/cc-status exists.
+# The ccstatusline layout comes from claude/ccstatusline.json and overwrites
+# ~/.config/ccstatusline/settings.json (previous saved as settings.json.prev).
+# If you change the layout with `npx ccstatusline`, copy it back into the repo.
 CLAUDE_DIR ?= $(HOME)/.claude
+CCSTATUSLINE_DIR ?= $(HOME)/.config/ccstatusline
 sync-claude:
 	@if ! command -v jq >/dev/null 2>&1; then \
 		echo "\033[0;31mclaude: skipped, jq not installed (brew install jq / apt install jq), then make sync-claude\033[0m"; \
@@ -117,6 +121,9 @@ sync-claude:
 	mkdir -p "$(CLAUDE_DIR)/skills"; \
 	rsync -a claude/skills/ "$(CLAUDE_DIR)/skills/"; \
 	cp claude/statusline.sh "$(CLAUDE_DIR)/statusline.sh"; \
+	mkdir -p "$(CCSTATUSLINE_DIR)"; \
+	[ ! -f "$(CCSTATUSLINE_DIR)/settings.json" ] || cp "$(CCSTATUSLINE_DIR)/settings.json" "$(CCSTATUSLINE_DIR)/settings.json.prev"; \
+	cp claude/ccstatusline.json "$(CCSTATUSLINE_DIR)/settings.json"; \
 	files="claude/settings.json"; \
 	if [ "$$(uname -s)" = Darwin ] && [ -x "$(HOME)/.config/iterm2/cc-status" ]; then \
 		files="$$files claude/settings.darwin.json"; \
