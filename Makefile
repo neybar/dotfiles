@@ -2,7 +2,7 @@
 # Makefile to copy dotfiles into place
 #
 .PHONY: fetch copy diff diff-long install update clean unlink bootstrap-omz update-omz \
-	sync-agent-sudo install-agent-sudo test-agent-sudo
+	sync-agent-sudo install-agent-sudo test-agent-sudo sync-claude
 
 update: fetch install update-omz
 
@@ -31,6 +31,7 @@ diff:
 	@echo "Files that would be changed:"
 	@rsync --exclude ".git/" \
 		  --exclude ".claude" \
+		  --exclude "/claude" \
 		  --exclude ".DS_Store" \
 		  --exclude ".gitignore" \
 		  --exclude ".gitconfig" \
@@ -50,7 +51,7 @@ diff-long:
 	@echo "Detailed diffs for changed dotfiles:"
 	@bash -c 'for file in {,.}*; do \
 	  case "$$file" in \
-	    .|..|.git|.claude|.DS_Store|.gitignore|.gitconfig|.zshrc.local|Makefile|README.md|CLAUDE.md|LICENSE*|oh-my-zsh|zsh_custom|init|agent-sudo|.zshrc) continue ;; \
+	    .|..|.git|.claude|claude|.DS_Store|.gitignore|.gitconfig|.zshrc.local|Makefile|README.md|CLAUDE.md|LICENSE*|oh-my-zsh|zsh_custom|init|agent-sudo|.zshrc) continue ;; \
 	  esac; \
 	  [ -f "$$file" ] || continue; \
 	  [ -f "$$HOME/$$file" ] || continue; \
@@ -63,6 +64,7 @@ diff-long:
 copy:
 	@rsync --exclude ".git/" \
 		  --exclude ".claude" \
+		  --exclude "/claude" \
 		  --exclude ".DS_Store" \
 		  --exclude ".gitignore" \
 		  --exclude ".gitconfig" \
@@ -80,7 +82,7 @@ copy:
 	@[ -f ~/.zshrc.local ] || cp $(CURDIR)/.zshrc.local ~/.zshrc.local
 	@ln -sfn $(CURDIR)/.zshrc ~/.zshrc
 
-install: copy bootstrap-omz sync-agent-sudo
+install: copy bootstrap-omz sync-agent-sudo sync-claude
 	# @/bin/zsh ~/.zshrc
 	@vim +PlugUpdate +qall
 	@# Prompt only for git user info that isn't set yet.
@@ -95,6 +97,33 @@ install: copy bootstrap-omz sync-agent-sudo
 	@echo "\033[0;32mGit user: $$(git config --global user.name) <$$(git config --global user.email)>\033[0m"
 	@echo "\033[0;31mCall 'source ~/.zshrc' to get new changes\033[0m"
 
+
+# Claude Code config (claude/ -> ~/.claude). Needs jq; skipped with a message
+# when it's missing. settings.json is merged, not replaced: keys in
+# claude/settings.json win, anything else Claude or you put there is kept.
+# claude/settings.darwin.json (iTerm cc-status hooks) is merged on macOS only,
+# and only when ~/.config/iterm2/cc-status exists.
+CLAUDE_DIR ?= $(HOME)/.claude
+sync-claude:
+	@if ! command -v jq >/dev/null 2>&1; then \
+		echo "\033[0;31mclaude: skipped, jq not installed (brew install jq / apt install jq), then make sync-claude\033[0m"; \
+		exit 0; \
+	fi; \
+	mkdir -p "$(CLAUDE_DIR)/skills"; \
+	rsync -a claude/skills/ "$(CLAUDE_DIR)/skills/"; \
+	cp claude/statusline.sh "$(CLAUDE_DIR)/statusline.sh"; \
+	files="claude/settings.json"; \
+	if [ "$$(uname -s)" = Darwin ] && [ -x "$(HOME)/.config/iterm2/cc-status" ]; then \
+		files="$$files claude/settings.darwin.json"; \
+	fi; \
+	[ -f "$(CLAUDE_DIR)/settings.json" ] || echo '{}' > "$(CLAUDE_DIR)/settings.json"; \
+	if jq -s 'reduce .[] as $$f ({}; . * $$f)' "$(CLAUDE_DIR)/settings.json" $$files > "$(CLAUDE_DIR)/settings.json.new"; then \
+		mv "$(CLAUDE_DIR)/settings.json.new" "$(CLAUDE_DIR)/settings.json"; \
+		echo "claude: settings and skills synced"; \
+	else \
+		rm -f "$(CLAUDE_DIR)/settings.json.new"; \
+		echo "\033[0;31mclaude: merge failed (is $(CLAUDE_DIR)/settings.json valid JSON?); left unchanged\033[0m"; \
+	fi
 
 # agent-sudo: sudo approval prompt for agents/IDEs (see agent-sudo/README.md).
 # make install / make update install it when missing or changed, asking for
