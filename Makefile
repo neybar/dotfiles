@@ -37,6 +37,7 @@ diff:
 		  --exclude ".gitconfig" \
 		  --exclude ".zshrc.local" \
 		  --exclude "Brewfile" \
+		  --exclude ".osx" \
 		  --exclude "Makefile" \
 		  --exclude "README.md" \
 		  --exclude "CLAUDE.md" \
@@ -52,7 +53,7 @@ diff-long:
 	@echo "Detailed diffs for changed dotfiles:"
 	@bash -c 'for file in {,.}*; do \
 	  case "$$file" in \
-	    .|..|.git|.claude|claude|.DS_Store|.gitignore|.gitconfig|.zshrc.local|Brewfile|Makefile|README.md|CLAUDE.md|LICENSE*|oh-my-zsh|zsh_custom|init|agent-sudo|.zshrc) continue ;; \
+	    .|..|.git|.claude|claude|.DS_Store|.gitignore|.gitconfig|.zshrc.local|Brewfile|.osx|Makefile|README.md|CLAUDE.md|LICENSE*|oh-my-zsh|zsh_custom|init|agent-sudo|.zshrc) continue ;; \
 	  esac; \
 	  [ -f "$$file" ] || continue; \
 	  [ -f "$$HOME/$$file" ] || continue; \
@@ -71,6 +72,7 @@ copy:
 		  --exclude ".gitconfig" \
 		  --exclude ".zshrc.local" \
 		  --exclude "Brewfile" \
+		  --exclude ".osx" \
 		  --exclude "Makefile" \
 		  --exclude "README.md" \
 		  --exclude "CLAUDE.md" \
