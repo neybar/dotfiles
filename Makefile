@@ -36,6 +36,7 @@ diff:
 		  --exclude ".gitignore" \
 		  --exclude ".gitconfig" \
 		  --exclude ".zshrc.local" \
+		  --exclude "Brewfile" \
 		  --exclude "Makefile" \
 		  --exclude "README.md" \
 		  --exclude "CLAUDE.md" \
@@ -51,7 +52,7 @@ diff-long:
 	@echo "Detailed diffs for changed dotfiles:"
 	@bash -c 'for file in {,.}*; do \
 	  case "$$file" in \
-	    .|..|.git|.claude|claude|.DS_Store|.gitignore|.gitconfig|.zshrc.local|Makefile|README.md|CLAUDE.md|LICENSE*|oh-my-zsh|zsh_custom|init|agent-sudo|.zshrc) continue ;; \
+	    .|..|.git|.claude|claude|.DS_Store|.gitignore|.gitconfig|.zshrc.local|Brewfile|Makefile|README.md|CLAUDE.md|LICENSE*|oh-my-zsh|zsh_custom|init|agent-sudo|.zshrc) continue ;; \
 	  esac; \
 	  [ -f "$$file" ] || continue; \
 	  [ -f "$$HOME/$$file" ] || continue; \
@@ -69,6 +70,7 @@ copy:
 		  --exclude ".gitignore" \
 		  --exclude ".gitconfig" \
 		  --exclude ".zshrc.local" \
+		  --exclude "Brewfile" \
 		  --exclude "Makefile" \
 		  --exclude "README.md" \
 		  --exclude "CLAUDE.md" \
@@ -100,7 +102,8 @@ install: copy bootstrap-omz sync-agent-sudo sync-claude
 
 # Claude Code config (claude/ -> ~/.claude). Needs jq; skipped with a message
 # when it's missing. settings.json is merged, not replaced: keys in
-# claude/settings.json win, anything else Claude or you put there is kept.
+# claude/settings.json win, anything else Claude or you put there is kept. The
+# previous file is saved as settings.json.prev first, to see or undo the merge.
 # claude/settings.darwin.json (iTerm cc-status hooks) is merged on macOS only,
 # and only when ~/.config/iterm2/cc-status exists.
 CLAUDE_DIR ?= $(HOME)/.claude
@@ -117,6 +120,7 @@ sync-claude:
 		files="$$files claude/settings.darwin.json"; \
 	fi; \
 	[ -f "$(CLAUDE_DIR)/settings.json" ] || echo '{}' > "$(CLAUDE_DIR)/settings.json"; \
+	cp "$(CLAUDE_DIR)/settings.json" "$(CLAUDE_DIR)/settings.json.prev"; \
 	if jq -s 'reduce .[] as $$f ({}; . * $$f)' "$(CLAUDE_DIR)/settings.json" $$files > "$(CLAUDE_DIR)/settings.json.new"; then \
 		mv "$(CLAUDE_DIR)/settings.json.new" "$(CLAUDE_DIR)/settings.json"; \
 		echo "claude: settings and skills synced"; \
