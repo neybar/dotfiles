@@ -19,7 +19,7 @@ Personal dotfiles for both macOS and Linux (both are first-class targets; change
 
 ## Claude Code config
 
-`claude/` holds the shared `~/.claude` config; `make sync-claude` (part of `make install`) installs it. `settings.json` is jq-merged into `~/.claude/settings.json` (repo keys win, other keys are kept), so it is not copied by `make copy`. `settings.darwin.json` (iTerm `cc-status` hooks) is merged only on macOS when `~/.config/iterm2/cc-status` exists. Needs `jq`; skipped with a message when missing. Don't put machine- or project-specific settings (permissions, `autoMode`) there.
+`claude/` holds the shared `~/.claude` config; `make sync-claude` (part of `make install`) installs it. `settings.json` is jq-merged into `~/.claude/settings.json` (repo keys win, other keys are kept; the previous file is saved as `settings.json.prev`), so it is not copied by `make copy`. `settings.darwin.json` (iTerm `cc-status` hooks) is merged only on macOS when `~/.config/iterm2/cc-status` exists. Needs `jq`; skipped with a message when missing. Don't put machine- or project-specific settings (permissions, `autoMode`) there.
 
 ## SSH and commit signing
 
