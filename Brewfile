@@ -28,6 +28,7 @@ brew 'exiftool'
 brew 'ffmpeg'
 brew 'fzf'
 brew 'git'
+brew 'jq' # used by make sync-claude
 brew 'go'
 brew 'imagemagick', args: ['with-webp']
 brew 'jhead'

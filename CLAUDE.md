@@ -17,6 +17,10 @@ Personal dotfiles for both macOS and Linux (both are first-class targets; change
 
 `agent-sudo/` (installed as root by `make install`) routes sudo from AI agents through a per-command approval prompt; `bin/sudo` is the shim that sits ahead of `/usr/bin/sudo` in PATH. It is security-sensitive: run `make test-agent-sudo` after any change, and read `agent-sudo/README.md` and `agent-sudo/TESTING.md` first.
 
+## Claude Code config
+
+`claude/` holds the shared `~/.claude` config; `make sync-claude` (part of `make install`) installs it. `settings.json` is jq-merged into `~/.claude/settings.json` (repo keys win, other keys are kept), so it is not copied by `make copy`. `settings.darwin.json` (iTerm `cc-status` hooks) is merged only on macOS when `~/.config/iterm2/cc-status` exists. Needs `jq`; skipped with a message when missing. Don't put machine- or project-specific settings (permissions, `autoMode`) there.
+
 ## SSH and commit signing
 
 No private keys on disk; everything comes from the 1Password SSH agent (`zsh_custom/ssh-agent.zsh` makes it available, including inside tmux; over ssh it points at `zsh_custom/ssh-agent-proxy`, which relays to the newest live forwarded agent). Commits are SSH-signed with the 1Password "GitHub (personal)" key, so committing needs 1Password unlocked.
