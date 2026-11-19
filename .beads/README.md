@@ -1,5 +1,7 @@
 # Beads - AI-Native Issue Tracking
 
+> **This repo uses a shared Dolt server, not a local or git-synced database.** Ignore the `bd init` and `bd dolt push`/`pull` text below and see "Beads in this repo" in `AGENTS.md`.
+
 Welcome to Beads! This repository uses **Beads** for issue tracking - a modern, AI-native tool designed to live directly in your codebase alongside your code.
 
 ## What is Beads?
