@@ -76,9 +76,10 @@ For each loose end from step 1, decide:
   someone can resume cold. If nobody will continue it soon, `bd unclaim <id>`.
 - **New loose ends and follow-ups**: `bd create` with why, what, where and done-when, plus `bd dep add` for
   real blockers. Don't leave them only in the chat.
-- **Session close protocol**: run whatever close steps the project's `bd prime` output lists (tests,
-  `git status`, and any Beads sync it requires, such as `bd dolt push`), and nothing it forbids (some
-  projects use a shared server with no sync step, or forbid committing JSONL exports).
+- **Session close protocol**: run the close steps the project's `bd prime` output lists (tests,
+  `git status`, and any Beads sync it requires), and nothing it forbids. The project's own agent docs
+  (AGENTS.md, CLAUDE.md) win over `bd prime` on any conflict: some projects use a shared server with no sync
+  step (no `bd dolt push`), forbid committing JSONL exports, or allow no commit or push unless asked.
 - **Verify the writes landed**: `bd show <id>` on what you changed. If the Beads server or database is
   unreachable, don't create a local one; list in the report exactly what to file, update or close.
 
