@@ -22,6 +22,8 @@ This repo is **public**. No tokens, passwords, API keys, private keys, private I
   - `.zshrc.local` is a template, copied only if `~/.zshrc.local` doesn't exist. Machine-specific PATH/plugins go there.
   - `ZSH_CUSTOM` is set in `.zshrc` to `$HOME/Projects/dotfiles/zsh_custom`, so changes there are live in new shells (only for a checkout at that path). `zsh_custom/*.local.zsh` is git-ignored for machine-specific config.
 - Anything at the repo root not in the rsync exclude list lands in `~`. When adding a repo-only file (docs, tooling), add it to the exclude lists in the `diff`, `diff-long`, and `copy` targets of the `Makefile`.
+- `archive/` holds retired configs kept as a fallback (the old bash setup, `archive/bash/`). It is not installed: excluded in the `Makefile`. `.dircolors` stays at the root because zsh uses it too. See `archive/README.md`.
+- Config for tools that read `~/.config` lives under `.config/` (tmux, curl, wget, IdeaVim, yamllint) and is installed by the same `make copy` rsync.
 - `zsh_custom/themes/powerlevel10k` and `zsh_custom/plugins/zsh-syntax-highlighting` are git-ignored clones managed by `make bootstrap-omz` / `make update-omz`, not submodules.
 
 ## agent-sudo

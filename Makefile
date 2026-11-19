@@ -52,6 +52,7 @@ diff:
 		  --exclude "zsh_custom" \
 		  --exclude "init" \
 		  --exclude "agent-sudo" \
+		  --exclude "/archive" \
 		  --exclude ".zshrc" \
 		  -avh --dry-run --no-perms . ~ | grep -E "^[<>cf\.]" || echo "No changes needed"
 
@@ -59,7 +60,7 @@ diff-long:
 	@echo "Detailed diffs for changed dotfiles:"
 	@bash -c 'for file in {,.}*; do \
 	  case "$$file" in \
-	    .|..|.git|.claude|claude|.DS_Store|.gitignore|.gitconfig|.zshrc.local|Brewfile|.osx|Makefile|README.md|CLAUDE.md|AGENTS.md|.agents|.codex|.cursor|.beads|.beads.gate.lock|LICENSE*|oh-my-zsh|zsh_custom|init|agent-sudo|.zshrc) continue ;; \
+	    .|..|.git|.claude|claude|.DS_Store|.gitignore|.gitconfig|.zshrc.local|Brewfile|.osx|Makefile|README.md|CLAUDE.md|AGENTS.md|.agents|.codex|.cursor|.beads|.beads.gate.lock|LICENSE*|oh-my-zsh|zsh_custom|init|agent-sudo|archive|.zshrc) continue ;; \
 	  esac; \
 	  [ -f "$$file" ] || continue; \
 	  [ -f "$$HOME/$$file" ] || continue; \
@@ -93,6 +94,7 @@ copy:
 		  --exclude "zsh_custom" \
 		  --exclude "init" \
 		  --exclude "agent-sudo" \
+		  --exclude "/archive" \
 		  --exclude ".zshrc" \
 		  -avh --no-perms . ~
 	@[ -f ~/.zshrc.local ] || cp $(CURDIR)/.zshrc.local ~/.zshrc.local
