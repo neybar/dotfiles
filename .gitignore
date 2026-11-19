@@ -34,3 +34,9 @@ zsh_custom/plugins/zsh-syntax-highlighting/
 .beads-credential-key
 .beads/proxieddb/
 *.gate.lock*
+
+# Per-user Claude Code permissions
+.claude/settings.local.json
+.beads/issues.jsonl
+.beads/events.jsonl
+.beads/interactions.jsonl

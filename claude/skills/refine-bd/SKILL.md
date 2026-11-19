@@ -11,8 +11,8 @@ integrates well with the codebase. Make sure each task has all the detail an AI 
 to implement it properly later. If anything is too complex or too large, split it into smaller
 issues. Make sure the dependencies between tasks (inside the tree and to other issues) make sense.
 
-Planning only: change issues, not code. Follow the repo's Beads rules first (AGENTS.md, CLAUDE.md,
-`bd prime`): server/env settings, `--actor`, and anything it forbids. Never use `bd edit` (it opens
+Planning only: change issues, not code. Follow the repo's Beads rules first (AGENTS.md, CLAUDE.md; they win over
+`bd prime` on any conflict): server/env settings, `--actor`, and anything it forbids. Never use `bd edit` (it opens
 an editor and blocks).
 
 ## 1. Pick the target

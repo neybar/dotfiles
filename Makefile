@@ -41,6 +41,12 @@ diff:
 		  --exclude "Makefile" \
 		  --exclude "README.md" \
 		  --exclude "CLAUDE.md" \
+		  --exclude "AGENTS.md" \
+		  --exclude ".agents" \
+		  --exclude ".codex" \
+		  --exclude ".cursor" \
+		  --exclude ".beads" \
+		  --exclude ".beads.gate.lock" \
 		  --exclude "LICENSE-MIT.txt" \
 		  --exclude "oh-my-zsh" \
 		  --exclude "zsh_custom" \
@@ -53,7 +59,7 @@ diff-long:
 	@echo "Detailed diffs for changed dotfiles:"
 	@bash -c 'for file in {,.}*; do \
 	  case "$$file" in \
-	    .|..|.git|.claude|claude|.DS_Store|.gitignore|.gitconfig|.zshrc.local|Brewfile|.osx|Makefile|README.md|CLAUDE.md|LICENSE*|oh-my-zsh|zsh_custom|init|agent-sudo|.zshrc) continue ;; \
+	    .|..|.git|.claude|claude|.DS_Store|.gitignore|.gitconfig|.zshrc.local|Brewfile|.osx|Makefile|README.md|CLAUDE.md|AGENTS.md|.agents|.codex|.cursor|.beads|.beads.gate.lock|LICENSE*|oh-my-zsh|zsh_custom|init|agent-sudo|.zshrc) continue ;; \
 	  esac; \
 	  [ -f "$$file" ] || continue; \
 	  [ -f "$$HOME/$$file" ] || continue; \
@@ -76,6 +82,12 @@ copy:
 		  --exclude "Makefile" \
 		  --exclude "README.md" \
 		  --exclude "CLAUDE.md" \
+		  --exclude "AGENTS.md" \
+		  --exclude ".agents" \
+		  --exclude ".codex" \
+		  --exclude ".cursor" \
+		  --exclude ".beads" \
+		  --exclude ".beads.gate.lock" \
 		  --exclude "LICENSE-MIT.txt" \
 		  --exclude "oh-my-zsh" \
 		  --exclude "zsh_custom" \

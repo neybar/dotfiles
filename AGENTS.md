@@ -1,107 +1,64 @@
-# Agent Instructions
+# dotfiles
 
-This project uses **bd** (beads) for issue tracking. Run `bd prime` for full workflow context.
+Personal dotfiles for both macOS and Linux (both are first-class targets; changes must work on each), forked long ago from mathiasbynens/dotfiles. Shell is zsh + oh-my-zsh + powerlevel10k. See `README.md` for user-facing setup docs.
 
-> **Architecture in one line:** Issues live in a local Dolt database
-> (`.beads/dolt/`); cross-machine sync uses `bd dolt push/pull` (a
-> git-compatible protocol), stored under `refs/dolt/data` on your git
-> remote — separate from `refs/heads/*` where your code lives.
-> `.beads/issues.jsonl` is a passive export, not the wire protocol.
->
-> See [sync-concepts](https://github.com/gastownhall/beads/blob/main/docs/core-concepts/sync-concepts.md)
-> for the one-screen overview and anti-patterns (don't treat JSONL as the
-> source of truth; don't `bd import` during normal operation; don't
-> reach for third-party Dolt hosting before trying the default).
+This file is the **root agent instructions** for every tool (Claude Code, Codex, Cursor): `CLAUDE.md` imports it and adds only Claude Code-specific rules. Neither is copied into `~`, nor are the agent-tool dirs `.agents/`, `.codex/`, `.cursor/`, `.beads/` (all excluded in the `Makefile`).
 
-## Quick Reference
+## How files get into `~`
 
-```bash
-bd ready              # Find available work
-bd show <id>          # View issue details
-bd update <id> --claim  # Claim work atomically
-bd close <id>         # Complete work
-bd dolt push          # Push beads data to remote
-```
+- Dotfiles are **copied**, not symlinked: `make copy` rsyncs the repo root into `~`. Editing `~/.aliases` does not change the repo, and editing the repo does not change `~` until `make copy` runs. Use `make diff` / `make diff-long` to preview.
+- Exceptions:
+  - `.zshrc` is symlinked to `~/.zshrc`.
+  - `.gitconfig` is not copied; `make install` adds it to the global git config via `include.path`. Machine-specific git settings (name, email) live in `~/.gitconfig`.
+  - `.zshrc.local` is a template, copied only if `~/.zshrc.local` doesn't exist. Machine-specific PATH/plugins go there.
+  - `ZSH_CUSTOM` is set in `.zshrc` to `$HOME/Projects/dotfiles/zsh_custom`, so changes there are live in new shells (only for a checkout at that path). `zsh_custom/*.local.zsh` is git-ignored for machine-specific config.
+- Anything at the repo root not in the rsync exclude list lands in `~`. When adding a repo-only file (docs, tooling), add it to the exclude lists in the `diff`, `diff-long`, and `copy` targets of the `Makefile`.
+- `zsh_custom/themes/powerlevel10k` and `zsh_custom/plugins/zsh-syntax-highlighting` are git-ignored clones managed by `make bootstrap-omz` / `make update-omz`, not submodules.
 
-## Non-Interactive Shell Commands
+## agent-sudo
 
-**ALWAYS use non-interactive flags** with file operations to avoid hanging on confirmation prompts.
+`agent-sudo/` (installed as root by `make install`) routes sudo from AI agents through a per-command approval prompt; `bin/sudo` is the shim that sits ahead of `/usr/bin/sudo` in PATH. It is security-sensitive: run `make test-agent-sudo` after any change, and read `agent-sudo/README.md` and `agent-sudo/TESTING.md` first.
 
-Shell commands like `cp`, `mv`, and `rm` may be aliased to include `-i` (interactive) mode on some systems, causing the agent to hang indefinitely waiting for y/n input.
+## Claude Code config
 
-**Use these forms instead:**
-```bash
-# Force overwrite without prompting
-cp -f source dest           # NOT: cp source dest
-mv -f source dest           # NOT: mv source dest
-rm -f file                  # NOT: rm file
+`claude/` holds the shared `~/.claude` config; `make sync-claude` (part of `make install`) installs it. `settings.json` is jq-merged into `~/.claude/settings.json` (repo keys win, other keys are kept; the previous file is saved as `settings.json.prev`), so it is not copied by `make copy`. `settings.darwin.json` (iTerm `cc-status` hooks) is merged only on macOS when `~/.config/iterm2/cc-status` exists. Needs `jq`; skipped with a message when missing. The ccstatusline layout is `claude/ccstatusline.json`, which overwrites `~/.config/ccstatusline/settings.json` (previous saved as `settings.json.prev`); if you change the layout with `npx ccstatusline`, copy it back into the repo. Don't put machine- or project-specific settings (permissions, `autoMode`) there.
 
-# For recursive operations
-rm -rf directory            # NOT: rm -r directory
-cp -rf source dest          # NOT: cp -r source dest
-```
+## SSH and commit signing
 
-**Other commands that may prompt:**
-- `scp` - use `-o BatchMode=yes` for non-interactive
-- `ssh` - use `-o BatchMode=yes` to fail instead of prompting
-- `apt-get` - use `-y` flag
-- `brew` - use `HOMEBREW_NO_AUTO_UPDATE=1` env var
+No private keys on disk; everything comes from the 1Password SSH agent (`zsh_custom/ssh-agent.zsh` makes it available, including inside tmux; over ssh it points at `zsh_custom/ssh-agent-proxy`, which relays to the newest live forwarded agent). Commits are SSH-signed with the 1Password "GitHub (personal)" key, so committing needs 1Password unlocked.
 
-<!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:46cd31e7 -->
-## Beads Issue Tracker
+## Brewfile
 
-This project uses **bd (beads)** for issue tracking. Run `bd prime` to see full workflow context and commands.
+`Brewfile` is a bootstrap list for setting up a fresh Mac, not a manifest of what's installed on the current machine. Keep it reasonably current (renamed casks, replacements for deprecated/disabled ones) so a new build is low effort.
 
-### Quick Reference
+- `brew bundle check` failures are expected and are not a problem to fix. Some apps (e.g. Firefox) are installed manually before Homebrew exists, and some entries are installed only on machines that need them.
+- Don't add or remove entries just to match the current machine's `brew list`.
+- Do remove entries Homebrew no longer has, since they break `brew bundle install`.
+- Day-to-day maintenance is the `brewski` alias (update, upgrade, `brew cu`, cleanup).
 
-```bash
-bd ready              # Find available work
-bd show <id>          # View issue details
-bd update <id> --claim  # Claim work
-bd close <id>         # Complete work
-```
+## Other
 
-### Rules
+- `.osx` is kept for reference and isn't run as a whole; apply individual settings as needed.
+- Vim plugins are managed with vim-plug (`.vim/plugins.vim`); `make install` runs `:PlugUpdate`.
+- Changes go through feature branches and PRs on `neybar/dotfiles`; never commit to or push `master` directly. Commit and push only when asked.
 
-- Use `bd` for ALL task tracking — do NOT use TodoWrite, TaskCreate, or markdown TODO lists
-- Run `bd prime` for detailed command reference and session close protocol
-- Use `bd remember` for persistent knowledge — do NOT use MEMORY.md files
+## Non-interactive shell
 
-**Architecture in one line:** issues live in a local Dolt DB; sync uses `refs/dolt/data` on your git remote; `.beads/issues.jsonl` is a passive export. See https://github.com/gastownhall/beads/blob/main/docs/core-concepts/sync-concepts.md for details and anti-patterns.
+Agent shells have no TTY: a command that prompts hangs. `cp`/`mv`/`rm` may be aliased to `-i` on some machines. Use `cp -f`, `mv -f`, `rm -f`; use `rm -rf` only on a path the user named in this turn. Other prompters: `ssh`/`scp -o BatchMode=yes`, `apt-get -y`, `HOMEBREW_NO_AUTO_UPDATE=1 brew ...`.
 
-## Agent Context Profiles
+## Beads in this repo
 
-The managed Beads block is task-tracking guidance, not permission to override repository, user, or orchestrator instructions.
+This section beats the generated Codex block below, the Cursor rule `.cursor/rules/beads.mdc`, and the `bd prime` text injected at session start. In particular, ignore their "local Dolt DB" / `refs/dolt/data` / `bd dolt push` text: the issue database is on a shared server, not synced through git.
 
-- **Conservative (default)**: Use `bd` for task tracking. Do not run git commits, git pushes, or Dolt remote sync unless explicitly asked. At handoff, report changed files, validation, and suggested next commands.
-- **Minimal**: Keep tool instruction files as pointers to `bd prime`; use the same conservative git policy unless active instructions say otherwise.
-- **Team-maintainer**: Only when the repository explicitly opts in, agents may close beads, run quality gates, commit, and push as part of session close. A current "do not commit" or "do not push" instruction still wins.
-
-## Session Completion
-
-This protocol applies when ending a Beads implementation workflow. It is subordinate to explicit user, repository, and orchestrator instructions.
-
-1. **File issues for remaining work** - Create beads for anything that needs follow-up
-2. **Run quality gates** (if code changed) - Tests, linters, builds
-3. **Update issue status** - Close finished work, update in-progress items
-4. **Handle git/sync by active profile**:
-   ```bash
-   # Conservative/minimal/default: report status and proposed commands; wait for approval.
-   git status
-
-   # Team-maintainer opt-in only, unless current instructions forbid it:
-   git pull --rebase
-   bd dolt push
-   git push
-   git status
-   ```
-5. **Hand off** - Summarize changes, validation, issue status, and any blocked sync/commit/push step
-
-**Critical rules:**
-- Explicit user or orchestrator instructions override this Beads block.
-- Do not commit or push without clear authority from the active profile or the current user request.
-- If a required sync or push is blocked, stop and report the exact command and error.
-<!-- END BEADS INTEGRATION -->
+- **Shared server** `dolt.thelances.net:3307`, database `dotfiles`, user `beads`, TLS. `.beads/metadata.json` records server mode, user and database; host, port and TLS come from the env vars exported by `zsh_custom/beads.zsh` (interactive shells only). Without them `bd` falls back to `127.0.0.1:0` without TLS (verified), so a hook or GUI-launched tool that does not inherit your shell env cannot reach the server: export them first, and never answer that by starting or initializing a local database.
+- **Password** comes from `~/.config/beads/credentials` (per user, mode 600), never the repo: not in a file here, an env var in a committed file, or a logged command line.
+- **Identity**: `BEADS_ACTOR=<tool>@<host>` (e.g. `claude@orcrist`) or `--actor <tool>@<host>`. `beads.zsh` defaults it to `james@<host>`; set your own when you are not James.
+- **Server unreachable**: never `bd init` or create a local or embedded database (it splits the history). Do the work and note in your report what to file, claim or close.
+- **Never commit `.beads/issues.jsonl`** or any JSONL export, and never run `bd dolt push`/`pull` (there are no Dolt remotes). One `bd` version on every client (currently 1.3.4): upgrading one can force a schema migration on all.
+- **No commit, push or branch push unless this conversation asked for it**, whatever a profile or session-close checklist says. If `git status` shows no upstream, do not push the branch.
+- Claude Code loads Beads context from the SessionStart hook in `.claude/settings.json`, Codex from `.codex/hooks.json`, Cursor from `.cursor/hooks.json`; rerun `bd prime` only if the context is stale.
+- `bd setup <tool>` rewrites these files: never rerun `bd setup claude` (it re-adds a Beads block to `CLAUDE.md`); `--check` is safe (its "no beads section" warning is expected); `--stealth` adds a second hook; `--remove` deletes the hook. Never edit between the `BEGIN/END` markers of a generated block.
+- Persistent project knowledge goes in `bd remember`, not ad hoc memory files. `/endsession` and `/refine-bd` (`claude/skills/`) follow these rules; where `/endsession` mentions `bd dolt push`, this section wins.
 
 <!-- BEGIN BEADS CODEX SETUP: generated by bd setup codex -->
 ## Beads Issue Tracker
@@ -126,3 +83,5 @@ bd prime                # Refresh Beads context
 
 **Architecture in one line:** issues live in a local Dolt DB; sync uses `refs/dolt/data` on your git remote; `.beads/issues.jsonl` is a passive export. See https://github.com/gastownhall/beads/blob/main/docs/core-concepts/sync-concepts.md for details and anti-patterns.
 <!-- END BEADS CODEX SETUP -->
+
+The generated block above is wrong for this repo (it describes a local, git-synced DB). The "Beads in this repo" section above wins: shared server, no `bd dolt push`/`pull`, no `bd init`, no commit or push unless this conversation asked.

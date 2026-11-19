@@ -65,3 +65,5 @@ For detailed docs: see AGENTS.md, the beads quickstart
 (https://github.com/gastownhall/beads/blob/main/docs/getting-started/quickstart.md), or run `bd --help`
 
 <!-- END BEADS INTEGRATION -->
+
+**This repo overrides the block above** (see "Beads in this repo" in AGENTS.md): the database is on a shared server, so ignore `bd dolt push`/`pull` and any local-DB text. Only the current conversation can authorize a git commit or push; a repository profile cannot.
