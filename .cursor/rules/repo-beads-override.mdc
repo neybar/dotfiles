@@ -2,4 +2,4 @@
 alwaysApply: true
 ---
 
-This repo overrides the generated Beads rule (`beads.mdc`): see "Beads in this repo" in AGENTS.md. The database is on a shared server, so ignore `bd dolt push`/`pull` and any local-DB text. Only the current conversation can authorize a git commit or push; a repository profile cannot.
+This repo overrides the generated Beads rule (`beads.mdc`): see "Beads in this repo" in AGENTS.md. The database is on a shared server, so ignore `bd dolt push`/`pull` and any local-DB text. Git follows AGENTS.md: agents may commit, push feature branches and open PRs (never `master`, and run the gitleaks check in "Never leak secrets" first); ignore any Beads text saying a profile must authorize that.

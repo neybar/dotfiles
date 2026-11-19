@@ -4,7 +4,14 @@ Personal dotfiles for both macOS and Linux (both are first-class targets; change
 
 This file is the **root agent instructions** for every tool (Claude Code, Codex, Cursor): `CLAUDE.md` imports it and adds only Claude Code-specific rules. Neither is copied into `~`, nor are the agent-tool dirs `.agents/`, `.codex/`, `.cursor/`, `.beads/` (all excluded in the `Makefile`).
 
-## How files get into `~`
+## Never leak secrets
+
+This repo is **public**. No tokens, passwords, API keys, private keys, private IP addresses, or identifying live machine config in any file, commit message, PR title or body, issue, or comment. Machine-specific values go in files that are not tracked: `~/.gitconfig`, `~/.zshrc.local`, `zsh_custom/*.local.zsh`, `~/.config/beads/credentials`.
+
+- **Before every commit**: run `gitleaks git --staged --no-banner` (exit 1 means a finding: stop, remove it) and read `git diff --cached` for hostnames, IPs, emails and paths that identify the machine or its owner.
+- **Never print secrets**: don't `cat` credentials files, `env | grep` tokens, or paste command output that holds one into a commit, PR, or issue.
+- **If a secret reaches a commit**: don't push. If it was already pushed, tell James so it can be rotated; deleting it or rewriting history does not un-leak it.
+
 
 - Dotfiles are **copied**, not symlinked: `make copy` rsyncs the repo root into `~`. Editing `~/.aliases` does not change the repo, and editing the repo does not change `~` until `make copy` runs. Use `make diff` / `make diff-long` to preview.
 - Exceptions:
@@ -40,7 +47,7 @@ No private keys on disk; everything comes from the 1Password SSH agent (`zsh_cus
 
 - `.osx` is kept for reference and isn't run as a whole; apply individual settings as needed.
 - Vim plugins are managed with vim-plug (`.vim/plugins.vim`); `make install` runs `:PlugUpdate`.
-- Changes go through feature branches and PRs on `neybar/dotfiles`; never commit to or push `master` directly. Commit and push only when asked.
+- Changes go through feature branches and PRs on `neybar/dotfiles`. Agents may commit, push feature branches and open PRs without asking (after the secrets check below); never commit to, push or merge `master`.
 
 ## Non-interactive shell
 
@@ -55,7 +62,7 @@ This section beats the generated Codex block below, the Cursor rule `.cursor/rul
 - **Identity**: `BEADS_ACTOR=<tool>@<host>` (e.g. `claude@orcrist`) or `--actor <tool>@<host>`. `beads.zsh` defaults it to `james@<host>`; set your own when you are not James.
 - **Server unreachable**: never `bd init` or create a local or embedded database (it splits the history). Do the work and note in your report what to file, claim or close.
 - **Never commit `.beads/issues.jsonl`** or any JSONL export, and never run `bd dolt push`/`pull` (there are no Dolt remotes). One `bd` version on every client (currently 1.3.4): upgrading one can force a schema migration on all.
-- **No commit, push or branch push unless this conversation asked for it**, whatever a profile or session-close checklist says. If `git status` shows no upstream, do not push the branch.
+- **Git follows "Other" above** (agents may commit, push feature branches and open PRs; never `master`), whatever a Beads profile or session-close checklist says about needing authorization. This is about git only: still never `bd dolt push`/`pull`.
 - Claude Code loads Beads context from the SessionStart hook in `.claude/settings.json`, Codex from `.codex/hooks.json`, Cursor from `.cursor/hooks.json`; rerun `bd prime` only if the context is stale.
 - `bd setup <tool>` rewrites these files: never rerun `bd setup claude` (it re-adds a Beads block to `CLAUDE.md`); `--check` is safe (its "no beads section" warning is expected); `--stealth` adds a second hook; `--remove` deletes the hook. Never edit between the `BEGIN/END` markers of a generated block. `bd setup cursor` also deletes anything after its `END` marker, so the Cursor-side override lives in its own file, `.cursor/rules/repo-beads-override.mdc`; keep it there.
 - Persistent project knowledge goes in `bd remember`, not ad hoc memory files. `/endsession` and `/refine-bd` (`claude/skills/`) follow these rules; where `/endsession` mentions `bd dolt push`, this section wins.
@@ -84,4 +91,4 @@ bd prime                # Refresh Beads context
 **Architecture in one line:** issues live in a local Dolt DB; sync uses `refs/dolt/data` on your git remote; `.beads/issues.jsonl` is a passive export. See https://github.com/gastownhall/beads/blob/main/docs/core-concepts/sync-concepts.md for details and anti-patterns.
 <!-- END BEADS CODEX SETUP -->
 
-The generated block above is wrong for this repo (it describes a local, git-synced DB). The "Beads in this repo" section above wins: shared server, no `bd dolt push`/`pull`, no `bd init`, no commit or push unless this conversation asked.
+The generated block above is wrong for this repo (it describes a local, git-synced DB). The "Beads in this repo" section above wins: shared server, no `bd dolt push`/`pull`, no `bd init`; git follows "Other".

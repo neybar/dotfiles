@@ -79,7 +79,7 @@ For each loose end from step 1, decide:
 - **Session close protocol**: run the close steps the project's `bd prime` output lists (tests,
   `git status`, and any Beads sync it requires), and nothing it forbids. The project's own agent docs
   (AGENTS.md, CLAUDE.md) win over `bd prime` on any conflict: some projects use a shared server with no sync
-  step (no `bd dolt push`), forbid committing JSONL exports, or allow no commit or push unless asked.
+  step (no `bd dolt push`) or forbid committing JSONL exports.
 - **Verify the writes landed**: `bd show <id>` on what you changed. If the Beads server or database is
   unreachable, don't create a local one; list in the report exactly what to file, update or close.
 
