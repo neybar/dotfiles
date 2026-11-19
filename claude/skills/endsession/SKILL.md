@@ -19,6 +19,8 @@ Go back over the whole conversation (and any compaction summary) and list for yo
   matter most; he finds re-teaching annoying.
 - **Workflow changes**: new or changed scripts, tools, folder layouts, conventions.
 - **Status**: what got finished, what is in progress, what is waiting on him.
+- **Beads issues** (if the project uses Beads: a `.beads/` directory, or its agent docs say so): every
+  issue this session created, claimed, worked on, closed or discussed, and any that should exist but don't.
 - **Loose ends**: promised next steps, unanswered questions, pending approvals, staging or temp files, background
   tasks still running, failed checks.
 
@@ -35,6 +37,8 @@ agents). Read the relevant parts before editing.
 - Keep paired copies in sync when the project asks for it (e.g. an AGENTS.md mirrored in memory).
 - Don't create a new doc file unless the project has nowhere suitable; if so, ask first.
 - Don't record what git history or the code itself already shows, or chatter that only mattered in this session.
+- In a Beads project, tasks, status and open items live in Beads (step 4), not in docs: never add a markdown
+  TODO, status table or open-items list. Docs still get facts, conventions and workflow changes.
 
 ## 3. Save, refine and purge memories
 
@@ -49,16 +53,34 @@ index). Then:
   recorded in the project docs. Remove their `MEMORY.md` lines too.
 - Check every memory that names a file, path, flag or command still matches reality; fix or drop it if not.
 - Convert relative dates ("yesterday", "next week") to absolute ones.
+- **Beads memories**: in a Beads project (a `.beads/` directory, or its agent docs say so), save project facts
+  with `bd remember "..."` instead of the memory directory (check for duplicates with `bd memories <keyword>` first;
+  remove wrong or superseded ones with `bd forget`). Keep only facts about James and cross-project feedback in
+  the memory system.
 
 ## 4. Handle unfinished work
 
 For each loose end from step 1, decide:
 
-- **Clear next step, nothing to decide**: write it in the project's open-items or status section with enough
-  context to resume cold (what, where it stands, the exact next command or question, what's waiting on whom).
+- **Clear next step, nothing to decide**: write it in the project's open-items or status section (in a Beads
+  project, a Beads issue instead; see below) with enough context to resume cold (what, where it stands, the exact next command or question, what's waiting on whom).
 - **Needs James's call** (keep it, drop it, do it now, which option): ask him. Batch the questions with
   AskUserQuestion (up to 4 per call; give each one enough context to stand alone), then record his answers.
 - **Something he asks you to finish now**: do it, then update the docs again.
+
+**In a Beads project**, record work in Beads, not docs. Follow the project's Beads rules (agent docs and
+`bd prime`, including any env vars and `--actor`), then:
+
+- **Finished**: `bd close <id> --reason="..."` (what was done, how it was verified).
+- **In progress or paused**: `bd update <id> --notes="..."` with where it stands and the exact next step, so
+  someone can resume cold. If nobody will continue it soon, `bd unclaim <id>`.
+- **New loose ends and follow-ups**: `bd create` with why, what, where and done-when, plus `bd dep add` for
+  real blockers. Don't leave them only in the chat.
+- **Session close protocol**: run whatever close steps the project's `bd prime` output lists (tests,
+  `git status`, and any Beads sync it requires, such as `bd dolt push`), and nothing it forbids (some
+  projects use a shared server with no sync step, or forbid committing JSONL exports).
+- **Verify the writes landed**: `bd show <id>` on what you changed. If the Beads server or database is
+  unreachable, don't create a local one; list in the report exactly what to file, update or close.
 
 Don't start destructive, irreversible or outward-facing actions (deleting, publishing, sending, copying to a
 server) on the strength of this skill alone; those still need his explicit go-ahead.
@@ -69,7 +91,8 @@ Stop any background task you started that is no longer needed, and mention any y
 Reply briefly:
 
 - Docs updated: file and one line on what changed.
-- Memories: added / updated / deleted (by name).
+- Memories: added / updated / deleted (by name), including `bd remember`/`bd forget` in Beads projects.
+- Beads: issues closed, updated, created or unclaimed (by id), and the close-protocol steps run.
 - Open items recorded, and where.
 - Anything still waiting on James.
 
