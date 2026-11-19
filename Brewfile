@@ -20,7 +20,6 @@ brew 'gnu-sed'
 
 # Install other useful binaries
 brew 'ack'
-brew 'ctags'
 brew 'cmake'
 brew 'curl'
 brew 'diff-so-fancy' # nicer diffs
