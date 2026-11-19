@@ -27,3 +27,10 @@ zsh_custom/*.local.zsh
 # updated by `omz update`)
 zsh_custom/themes/powerlevel10k/
 zsh_custom/plugins/zsh-syntax-highlighting/
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+*.db
+.beads-credential-key
+.beads/proxieddb/
+*.gate.lock*
