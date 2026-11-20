@@ -25,7 +25,11 @@ update-omz:
 	@git -C zsh_custom/plugins/zsh-syntax-highlighting pull --ff-only
 
 fetch:
-	@git pull
+	@if git rev-parse --abbrev-ref --symbolic-full-name '@{u}' >/dev/null 2>&1; then \
+	    git pull; \
+	else \
+	    echo "fetch: $$(git rev-parse --abbrev-ref HEAD) has no upstream (not pushed yet), skipping git pull"; \
+	fi
 
 diff:
 	@echo "Files that would be changed:"
