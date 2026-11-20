@@ -1,12 +1,5 @@
-The items in this directory aren't automated, but are here for safe keeping.
+macOS terminal setup, installed by `make install` (each target does nothing on Linux):
 
-There are various fonts and terminal themes.  They only work under specific systems (OSX).
-
-To install:
-
-	> open Presenter.terminal
-	> open Pro.terminal
-	> ./iterm_profiles.sh
-	> open DroidSansMonoSlashed/Droid\ Sans\ Mono\ Slashed\ for\ Powerline.ttf
-	
-The iterm_profiles.sh has a hard coded source, so change that to match where you are storing the dotfile repo.
+- `iterm_profiles.pinfo`: iTerm2 dynamic profiles. `make sync-iterm` copies it into iTerm's DynamicProfiles folder rather than linking it, so iTerm never reads a half-written file or writes its own changes into the repo. To change a profile, edit this file and run `make sync-iterm`; changes made in iTerm's settings stay in iTerm's copy.
+- `MesloLGS_NF/`, `DroidSansMonoSlashed/`: fonts. `make sync-fonts` copies each `.ttf` into `~/Library/Fonts` unless a font file of that name is already there (an installed font is never replaced, since it may be newer).
+- `Presenter.terminal`, `Pro Custom.terminal`: Terminal.app profiles. `make sync-terminal` imports each one with `open` unless Terminal already has a profile of that name; each import opens a Terminal window. `Pro Custom` is the built-in `Pro` with Monaco 13, font smoothing, bright bold, Option as Meta, and Home/End/PgUp/PgDn sent to the program instead of scrolling. It needs its own name: a profile imported under a taken name such as `Pro` is saved as `Pro 1`.

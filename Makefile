@@ -2,7 +2,7 @@
 # Makefile to copy dotfiles into place
 #
 .PHONY: fetch copy diff diff-long install update clean unlink bootstrap-omz update-omz \
-	sync-agent-sudo install-agent-sudo test-agent-sudo sync-claude
+	sync-agent-sudo install-agent-sudo test-agent-sudo sync-claude sync-iterm sync-fonts sync-terminal
 
 update: fetch install update-omz
 
@@ -98,7 +98,7 @@ copy:
 	@[ -f ~/.zshrc.local ] || cp $(CURDIR)/.zshrc.local ~/.zshrc.local
 	@ln -sfn $(CURDIR)/.zshrc ~/.zshrc
 
-install: copy bootstrap-omz sync-agent-sudo sync-claude
+install: copy bootstrap-omz sync-agent-sudo sync-claude sync-iterm sync-fonts sync-terminal
 	# @/bin/zsh ~/.zshrc
 	@vim +PlugUpdate +qall
 	@# Prompt only for git user info that isn't set yet.
@@ -113,6 +113,48 @@ install: copy bootstrap-omz sync-agent-sudo sync-claude
 	@echo "\033[0;32mGit user: $$(git config --global user.name) <$$(git config --global user.email)>\033[0m"
 	@echo "\033[0;31mCall 'source ~/.zshrc' to get new changes\033[0m"
 
+# iTerm2 dynamic profiles (macOS only): copy init/iterm_profiles.pinfo into
+# iTerm's DynamicProfiles folder. A copy, not a symlink: iTerm watches that
+# folder live, so git writing the repo file could be read half-written, and
+# iTerm rewriting a profile would land in the repo. The copy is written to a
+# temp file beside the folder and renamed into place, so iTerm only ever sees
+# a whole file; a differing previous copy is saved as iterm_profiles.pinfo.prev
+# next to the folder (not in it, where iTerm would load it).
+ITERM_SUPPORT_DIR ?= $(HOME)/Library/Application Support/iTerm2
+sync-iterm:
+	@if [ "$$(uname -s)" != Darwin ]; then exit 0; fi; \
+	src=init/iterm_profiles.pinfo; \
+	dir="$(ITERM_SUPPORT_DIR)/DynamicProfiles"; dst="$$dir/iterm_profiles.pinfo"; \
+	if [ ! -L "$$dst" ] && cmp -s "$$src" "$$dst"; then echo "iterm: profiles up to date"; exit 0; fi; \
+	mkdir -p "$$dir"; \
+	if [ -f "$$dst" ] && [ ! -L "$$dst" ]; then cp -f "$$dst" "$(ITERM_SUPPORT_DIR)/iterm_profiles.pinfo.prev"; fi; \
+	tmp="$(ITERM_SUPPORT_DIR)/.iterm_profiles.pinfo.tmp"; \
+	cp -f "$$src" "$$tmp" && mv -f "$$tmp" "$$dst" && echo "iterm: profiles installed"
+
+# Fonts (macOS only): copy init/*/*.ttf into ~/Library/Fonts when no font file
+# of that name is there yet. Never replaces an installed font (it may be newer).
+FONTS_DIR ?= $(HOME)/Library/Fonts
+sync-fonts:
+	@if [ "$$(uname -s)" != Darwin ]; then exit 0; fi; \
+	mkdir -p "$(FONTS_DIR)"; added=0; \
+	for f in init/*/*.ttf; do \
+		[ -e "$(FONTS_DIR)/$${f##*/}" ] && continue; \
+		cp -f "$$f" "$(FONTS_DIR)/" && added=$$((added + 1)); \
+	done; \
+	echo "fonts: $$added added"
+
+# Terminal.app profiles (macOS only): import init/*.terminal when Terminal has
+# no profile of that name yet. `open` is Terminal's own import (safe while it is
+# running, e.g. during make install on a fresh Mac); it opens one window each.
+sync-terminal:
+	@if [ "$$(uname -s)" != Darwin ]; then exit 0; fi; \
+	prefs=$$(defaults export com.apple.Terminal - 2>/dev/null); added=; \
+	for f in init/*.terminal; do \
+		name=$$(plutil -extract name raw -o - "$$f") || continue; \
+		printf '%s' "$$prefs" | plutil -extract "Window Settings.$$name" xml1 -o /dev/null - 2>/dev/null && continue; \
+		open "$$f" && added="$$added $$name"; \
+	done; \
+	echo "terminal: profiles imported:$${added:- none}"
 
 # Claude Code config (claude/ -> ~/.claude). Needs jq; skipped with a message
 # when it's missing. settings.json is merged, not replaced: keys in

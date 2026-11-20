@@ -17,6 +17,8 @@ This repo is **public**. No tokens, passwords, API keys, private keys, private I
 - Exceptions:
   - `.zshrc` is symlinked to `~/.zshrc`.
   - `.gitconfig` is not copied; `make install` adds it to the global git config via `include.path`. Machine-specific git settings (name, email) live in `~/.gitconfig`.
+  - `init/iterm_profiles.pinfo` (iTerm2 dynamic profiles) is copied, not linked, into `~/Library/Application Support/iTerm2/DynamicProfiles/` by `make sync-iterm` (part of `make install`, macOS only), via a temp file and rename so iTerm never reads it half-written. iTerm watches that folder live and can rewrite profiles there, so never link it to the repo.
+  - The rest of `init/` is also installed by `make install` on macOS only: `make sync-fonts` (fonts into `~/Library/Fonts`, never replacing one already there) and `make sync-terminal` (Terminal.app profiles imported with `open`, only when missing). See `init/Readme.md`.
   - `.zshrc.local` is a template, copied only if `~/.zshrc.local` doesn't exist. Machine-specific PATH/plugins go there.
   - `ZSH_CUSTOM` is set in `.zshrc` to `$HOME/Projects/dotfiles/zsh_custom`, so changes there are live in new shells (only for a checkout at that path). `zsh_custom/*.local.zsh` is git-ignored for machine-specific config.
 - Anything at the repo root not in the rsync exclude list lands in `~`. When adding a repo-only file (docs, tooling), add it to the exclude lists in the `diff`, `diff-long`, and `copy` targets of the `Makefile`.
