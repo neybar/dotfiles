@@ -1,13 +1,20 @@
-# Make vim the default editor
-export EDITOR="vim"
+# vim is the default editor and vimpager (a vim-plug plugin that make install
+# fetches) is the pager. Until they are installed, leave the system defaults
+# alone instead of breaking less and $EDITOR. make install warns about a
+# missing vim; nothing is printed here, because output during shell startup
+# trips the powerlevel10k instant prompt.
+if (( $+commands[vim] )); then
+    export EDITOR="vim"
 
-# Use vim as the default pager
-export PAGER=~/.vim/plugged/vimpager/vimpager
+    if [[ -x ~/.vim/plugged/vimpager/vimpager ]]; then
+        export PAGER=~/.vim/plugged/vimpager/vimpager
 
-# I normally would put this in the alias file, but I didn't want to lose track that I'm using 
-# vimpager here
-alias less=$PAGER
-alias zless=$PAGER
+        # I normally would put this in the alias file, but I didn't want to lose
+        # track that I'm using vimpager here
+        alias less=$PAGER
+        alias zless=$PAGER
+    fi
+fi
 
 export BAT_THEME="Solarized (dark)"
 

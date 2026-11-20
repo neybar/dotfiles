@@ -102,7 +102,11 @@ copy:
 
 install: copy bootstrap-omz sync-agent-sudo sync-claude sync-iterm sync-fonts sync-terminal
 	# @/bin/zsh ~/.zshrc
-	@vim +PlugUpdate +qall
+	@if command -v vim >/dev/null 2>&1; then \
+		vim +PlugUpdate +qall; \
+	else \
+		printf '\033[0;31mvim: not installed, so :PlugUpdate was skipped (vim and the vimpager pager are expected). Install it (macOS: brew install vim; Arch: pacman -S vim; Debian/Ubuntu: apt install vim) and run make install again.\033[0m\n'; \
+	fi
 	@# Prompt only for git user info that isn't set yet.
 	@if ! git config --global user.name >/dev/null; then \
 		read -p "Git user name: " GIT_NAME && git config --global user.name "$$GIT_NAME"; \
