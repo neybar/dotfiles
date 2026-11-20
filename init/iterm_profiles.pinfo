@@ -335,6 +335,7 @@
   },
   "Disable Smcup Rmcup" : false,
   "Name" : "Coding",
+  "Load Shell Integration Automatically" : true,
   "Blinking Cursor" : false,
   "Guid" : "Coding",
   "Ansi 1 Color" : {
@@ -771,6 +772,7 @@
   },
   "Disable Smcup Rmcup" : false,
   "Name" : "Presenter",
+  "Load Shell Integration Automatically" : true,
   "Blinking Cursor" : false,
   "Guid" : "Presenter",
   "Ansi 1 Color" : {
@@ -1205,6 +1207,7 @@
   },
   "Disable Smcup Rmcup" : false,
   "Name" : "Coding Overlay",
+  "Load Shell Integration Automatically" : true,
   "Blinking Cursor" : false,
   "Guid" : "964C1AE6-AA9B-41E4-ADBE-D715D53EB5A8",
   "Ansi 1 Color" : {
