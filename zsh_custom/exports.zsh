@@ -18,22 +18,23 @@ fi
 
 export BAT_THEME="Solarized (dark)"
 
-# Larger bash history (allow 32³ entries; default is 500)
+# Larger history (allow 32³ entries; zsh's default is 30)
 export HISTSIZE=32768
 export SAVEHIST=$HISTSIZE
-export HISTFILESIZE=$HISTSIZE
-export HISTCONTROL=ignoreboth
 setopt hist_ignore_all_dups
 setopt hist_ignore_space
-# Make some commands not show up in history
-export HISTIGNORE="ls:cd:cd -:pwd:exit:date:* --help"
+# Make some commands not show up in the saved history. One pattern, matched
+# against the whole line when the history file is written.
+HISTORY_IGNORE="(ls|cd|cd -|pwd|exit|date|* --help)"
 
 # Prefer US English and use UTF-8
 export LANG="en_US.UTF-8"
 export LC_ALL="en_US.UTF-8"
 
-# Highlight section titles in manual pages
-export LESS_TERMCAP_md="$ORANGE"
+# Highlight section titles in manual pages: bold orange (256-color 172), reset
+# afterwards so the color doesn't bleed into the text that follows.
+export LESS_TERMCAP_md=$'\e[1;38;5;172m'
+export LESS_TERMCAP_me=$'\e[0m'
 
 # Don’t clear the screen after quitting a manual page
 export MANPAGER="less -X"
