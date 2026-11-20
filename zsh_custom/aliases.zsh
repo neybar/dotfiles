@@ -1,5 +1,16 @@
-# Read in my dircolors file
-(( $+commands[gdircolors] )) && eval "$(gdircolors -b ~/.dircolors)"
+# Read in my dircolors file. GNU dircolors is `dircolors` on Linux and
+# `gdircolors` on macOS (Homebrew coreutils prefixes its tools with g).
+if [[ -r ~/.dircolors ]]; then
+    if (( $+commands[dircolors] )); then
+        eval "$(dircolors -b ~/.dircolors)"
+    elif (( $+commands[gdircolors] )); then
+        eval "$(gdircolors -b ~/.dircolors)"
+    fi
+fi
+
+# On some systems (Arch's vi package) `vi` is the original ex/vi, which has no
+# visual mode. Use vim, when it is installed.
+(( $+commands[vim] )) && alias vi=vim
 
 # Enhanced WHOIS lookups
 alias whois="whois -h whois-servers.net"

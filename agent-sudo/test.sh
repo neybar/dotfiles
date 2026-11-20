@@ -192,7 +192,19 @@ rm -rf "$tmp"
 # parsing, and the refusal shows the command as parsed. sudo then fails with
 # "no password was provided"; nothing runs as root (the commands are no-ops
 # even where sudo needs no password).
-if [ -x /usr/bin/sudo ]; then
+#
+# Every one of these cases ends in a failed sudo authentication. Where PAM runs
+# pam_faillock (Arch, Fedora, ...), failures add up across runs, and ten of them
+# lock your account: sudo then refuses your real password for two minutes. So
+# the section is skipped there. AGENT_SUDO_TEST_REAL_SUDO=1 runs it anyway.
+faillock_on=
+if [ -z "${AGENT_SUDO_TEST_REAL_SUDO-}" ] &&
+    grep -qsE '^[[:space:]]*[^#[:space:]].*pam_faillock' \
+        /etc/pam.d/sudo /etc/pam.d/system-auth /etc/pam.d/system-auth-ac \
+        /etc/pam.d/common-auth /etc/pam.d/password-auth; then
+    faillock_on=yes
+fi
+if [ -x /usr/bin/sudo ] && [ -z "$faillock_on" ]; then
     tmp=$(mktemp -d)
     sed -e "s|^RULES_FILE=.*|RULES_FILE=$dir/rules|" -e "s|^SELF=.*|SELF=$tmp/askpass|" \
         -e "s|^WRAPPER=.*|WRAPPER=$tmp/agent-sudo|" "$dir/askpass" >"$tmp/askpass"
@@ -285,6 +297,10 @@ if [ -x /usr/bin/sudo ]; then
         s "sudo : 'a b'" env SUDO_ASKPASS="$tmp/askpass" /usr/bin/sudo -k -A : 'a b'
     fi
     rm -rf "$tmp"
+elif [ -n "$faillock_on" ]; then
+    echo "note: sudo's PAM stack uses pam_faillock; skipped the real-sudo cases"
+    echo "      (they fail authentication on purpose and would lock your account;"
+    echo "      AGENT_SUDO_TEST_REAL_SUDO=1 runs them anyway)"
 else
     echo "note: no /usr/bin/sudo; skipped the real-sudo cases"
 fi

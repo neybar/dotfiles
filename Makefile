@@ -25,7 +25,11 @@ update-omz:
 	@git -C zsh_custom/plugins/zsh-syntax-highlighting pull --ff-only
 
 fetch:
-	@git pull
+	@if git rev-parse --abbrev-ref --symbolic-full-name '@{u}' >/dev/null 2>&1; then \
+	    git pull; \
+	else \
+	    echo "fetch: $$(git rev-parse --abbrev-ref HEAD) has no upstream (not pushed yet), skipping git pull"; \
+	fi
 
 diff:
 	@echo "Files that would be changed:"
@@ -52,6 +56,7 @@ diff:
 		  --exclude "zsh_custom" \
 		  --exclude "init" \
 		  --exclude "agent-sudo" \
+		  --exclude "/archive" \
 		  --exclude ".zshrc" \
 		  -avh --dry-run --no-perms . ~ | grep -E "^[<>cf\.]" || echo "No changes needed"
 
@@ -59,7 +64,7 @@ diff-long:
 	@echo "Detailed diffs for changed dotfiles:"
 	@bash -c 'for file in {,.}*; do \
 	  case "$$file" in \
-	    .|..|.git|.claude|claude|.DS_Store|.gitignore|.gitconfig|.zshrc.local|Brewfile|.osx|Makefile|README.md|CLAUDE.md|AGENTS.md|.agents|.codex|.cursor|.beads|.beads.gate.lock|LICENSE*|oh-my-zsh|zsh_custom|init|agent-sudo|.zshrc) continue ;; \
+	    .|..|.git|.claude|claude|.DS_Store|.gitignore|.gitconfig|.zshrc.local|Brewfile|.osx|Makefile|README.md|CLAUDE.md|AGENTS.md|.agents|.codex|.cursor|.beads|.beads.gate.lock|LICENSE*|oh-my-zsh|zsh_custom|init|agent-sudo|archive|.zshrc) continue ;; \
 	  esac; \
 	  [ -f "$$file" ] || continue; \
 	  [ -f "$$HOME/$$file" ] || continue; \
@@ -93,6 +98,7 @@ copy:
 		  --exclude "zsh_custom" \
 		  --exclude "init" \
 		  --exclude "agent-sudo" \
+		  --exclude "/archive" \
 		  --exclude ".zshrc" \
 		  -avh --no-perms . ~
 	@[ -f ~/.zshrc.local ] || cp $(CURDIR)/.zshrc.local ~/.zshrc.local
@@ -100,7 +106,11 @@ copy:
 
 install: copy bootstrap-omz sync-agent-sudo sync-claude sync-iterm sync-fonts sync-terminal
 	# @/bin/zsh ~/.zshrc
-	@vim +PlugUpdate +qall
+	@if command -v vim >/dev/null 2>&1; then \
+		vim +PlugUpdate +qall; \
+	else \
+		printf '\033[0;31mvim: not installed, so :PlugUpdate was skipped (vim and the vimpager pager are expected). Install it (macOS: brew install vim; Arch: pacman -S vim; Debian/Ubuntu: apt install vim) and run make install again.\033[0m\n'; \
+	fi
 	@# Prompt only for git user info that isn't set yet.
 	@if ! git config --global user.name >/dev/null; then \
 		read -p "Git user name: " GIT_NAME && git config --global user.name "$$GIT_NAME"; \

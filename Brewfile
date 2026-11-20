@@ -7,6 +7,7 @@
 
 # Extra Repos
 tap  'buo/cask-upgrade'
+tap  'timescam/tap' # third-party tap for pay-respects (not in homebrew-core)
 
 # Install GNU core utilities (those that come with OS X are outdated)
 # Don’t forget to add `$(brew --prefix coreutils)/libexec/gnubin` to `$PATH`.
@@ -20,7 +21,6 @@ brew 'gnu-sed'
 
 # Install other useful binaries
 brew 'ack'
-brew 'ctags'
 brew 'cmake'
 brew 'curl'
 brew 'diff-so-fancy' # nicer diffs
@@ -48,7 +48,7 @@ brew 'rename'
 brew 'ssh-copy-id'
 brew 'tag'
 brew 'ripgrep' # better grep (replaces the_silver_searcher)
-brew 'thefuck'
+brew 'timescam/tap/pay-respects' # command correction (replaces thefuck); wired up in zsh_custom/pay-respects.zsh
 brew 'tree'
 brew 'vim'
 brew 'wget'

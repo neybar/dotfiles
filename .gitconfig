@@ -50,9 +50,9 @@
 	whitespace = fix
 
 [core]
-	# Use custom `.gitignore` and `.gitattributes`
-	excludesfile = ~/.gitignore
-	attributesfile = ~/.gitattributes
+	# No excludesfile or attributesfile: git reads ~/.config/git/ignore and
+	# ~/.config/git/attributes by default. This repo's own `.gitignore` is not
+	# copied to ~.
 	# Treat spaces before tabs and all kinds of trailing whitespace as an error.
 	# [default] trailing-space: looks for spaces at the end of a line
 	# [default] space-before-tab: looks for spaces before tabs at the beginning of
