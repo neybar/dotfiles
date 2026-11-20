@@ -107,7 +107,9 @@ copy:
 install: copy bootstrap-omz sync-agent-sudo sync-claude sync-iterm sync-fonts sync-terminal
 	# @/bin/zsh ~/.zshrc
 	@if command -v vim >/dev/null 2>&1; then \
-		vim +PlugUpdate +qall; \
+		echo "vim: updating plugins"; \
+		vim -es -u "$$HOME/.vimrc" -i NONE -c PlugUpdate -c qa </dev/null \
+			|| printf '\033[0;31mvim: :PlugUpdate reported an error; run vim +PlugUpdate to see it\033[0m\n'; \
 	else \
 		printf '\033[0;31mvim: not installed, so :PlugUpdate was skipped (vim and the vimpager pager are expected). Install it (macOS: brew install vim; Arch: pacman -S vim; Debian/Ubuntu: apt install vim) and run make install again.\033[0m\n'; \
 	fi
