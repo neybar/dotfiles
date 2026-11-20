@@ -163,7 +163,9 @@ directory comes from the account database (`getent` / `dscl`), not the agent's
 and rules are compared ignoring case (`RM -rf /etc` is denied).
 
 Add a test to `test.sh` for every rule change; `make test-agent-sudo` runs them
-without root. Platform testing status and probe scripts: [TESTING.md](TESTING.md).
+without root. On systems whose sudo uses `pam_faillock` (Arch, Fedora), the cases that call
+the real sudo are skipped: they fail authentication on purpose, and ten failures
+lock your account for two minutes. `AGENT_SUDO_TEST_REAL_SUDO=1` runs them anyway. Platform testing status and probe scripts: [TESTING.md](TESTING.md).
 
 ## What this does and doesn't protect against
 
