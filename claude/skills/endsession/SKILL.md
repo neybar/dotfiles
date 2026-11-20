@@ -6,9 +6,13 @@ disable-model-invocation: true
 
 # End of session
 
-James runs this before he closes a session. The goal: the next session (yours or another agent's) starts with
-everything this one learned, and nothing gets lost or left half-done without a note. Work through the steps below
-in order, then give one short report. Keep it proportionate: a quick session may need only a line or two of edits.
+James runs this when he is about to step away (end of day, bed, leaving), so he may not have time to work
+through anything. It is a sync-up: the next session (yours or another agent's) should start with everything this
+one learned, and nothing should be lost or left half-done without a note. You don't need to ask before updating
+docs, memories or Beads, filing issues, or finishing small loose ends. **But keep him informed:** before each
+change, say in a line what you're changing and why, and list every change in the report. Work through the steps
+below in order, then give one short report. Keep it proportionate: a quick session may need only a line or two
+of edits.
 
 ## 1. Review the session
 
@@ -62,6 +66,7 @@ index). Then:
 
 For each loose end from step 1, decide:
 
+- **Small and safe, nothing to decide**: just do it now, and say so.
 - **Clear next step, nothing to decide**: write it in the project's open-items or status section (in a Beads
   project, a Beads issue instead; see below) with enough context to resume cold (what, where it stands, the exact next command or question, what's waiting on whom).
 - **Needs James's call** (keep it, drop it, do it now, which option): ask him. Batch the questions with
@@ -85,6 +90,8 @@ For each loose end from step 1, decide:
 
 Don't start destructive, irreversible or outward-facing actions (deleting, publishing, sending, copying to a
 server) on the strength of this skill alone; those still need his explicit go-ahead.
+Don't leave work stranded on him: no new branch or commit waiting for his push or review unless the report says
+so plainly at the top. In a repo that takes changes through PRs, mention doc edits before committing them.
 Stop any background task you started that is no longer needed, and mention any you leave running.
 
 ## 5. Report
