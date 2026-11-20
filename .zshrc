@@ -23,6 +23,7 @@ plugins=(
     fzf
     thefuck
     z
+    iterm2
     zsh-syntax-highlighting
 )
 
