@@ -191,7 +191,7 @@
 		<string>[3;5~</string>
 	</dict>
 	<key>name</key>
-	<string>Pro</string>
+	<string>Pro Custom</string>
 	<key>shellExitAction</key>
 	<integer>2</integer>
 	<key>type</key>
